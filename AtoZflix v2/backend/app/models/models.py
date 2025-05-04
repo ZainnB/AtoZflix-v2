@@ -85,7 +85,6 @@ class MovieLog(db.Model):
     __tablename__ = 'MovieLogs'
     movie_log_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     admin_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
-    movie_id = db.Column(db.Integer, db.ForeignKey('Movies.movie_id'))
     action = db.Column(db.String(10), nullable=False)
     details = db.Column(db.Text)
     timestamp = db.Column(db.DateTime)

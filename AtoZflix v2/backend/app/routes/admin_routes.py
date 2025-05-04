@@ -55,7 +55,7 @@ def update_single_movie():
         populate_genres(details)
         populate_actors_and_crew(credits, movie_id)
 
-        MovieLog_action(admin_id, 'Update', f"Updated movie {details['title']} (ID: {movie_id})")
+        MovieLog_action(db.session, admin_id, 'Update', f"Updated movie {details['title']} (ID: {movie_id})")
 
         db.session.commit()
         return jsonify({'message': f"Movie '{details['title']}' updated successfully"}), 200
@@ -85,7 +85,7 @@ def delete_single_movie():
 
         db.session.delete(movie)
 
-        MovieLog_action(admin_id, 'Delete', f"Deleted movie ID: {movie_id}")
+        MovieLog_action(db.session, admin_id, 'Delete', f"Deleted movie ID: {movie_id}")
 
         db.session.commit()
         return jsonify({'message': f"Movie with ID '{movie_id}' deleted successfully"}), 200
@@ -207,7 +207,7 @@ def delete_user():
         db.session.flush()  # Ensures user is removed before inserting log
 
         # Log the deletion
-        UserLog_action(db.session, admin_id, 'Delete', f"Deleted user {user.username} (ID: {user.user_id})")
+        UserLog_action(db.session, admin_id, user_id,'Delete', f"Deleted user {user.username} (ID: {user.user_id})")
         db.session.commit()
 
         return jsonify({"message": "User deleted successfully"}), 200
@@ -254,7 +254,7 @@ def update_user():
         }
 
         # Log the update
-        UserLog_action(db.session, admin_id, 'Update', f"Updated user {user.username} (ID: {user.user_id})", old_data=old_data, new_data=new_data)
+        UserLog_action(db.session, admin_id, user_id,'Update', f"Updated user {user.username} (ID: {user.user_id})", old_data=old_data, new_data=new_data)
         db.session.commit()
 
         return jsonify({"message": "User updated successfully"}), 200
@@ -269,11 +269,11 @@ def get_movie_logs():
         logs = db.session.query(MovieLog).all()
         if logs:
             logs_list = [{
-                "log_id": log.log_id,
+                "log_id": log.movie_log_id,
                 "admin_id": log.admin_id,
                 "action": log.action,
                 "details": log.details,
-                "created_at": log.created_at
+                "created_at": log.timestamp
             } for log in logs]
             return jsonify({"status": "success", "logs": logs_list}), 200
         return jsonify({"status": "success", "message": "No logs found"}), 404
@@ -293,10 +293,9 @@ def get_user_logs():
                 "action": log.action,
                 "old_data": log.old_data,
                 "new_data": log.new_data,
-                "created_at": log.created_at
+                "created_at": log.timestamp
             } for log in logs]
             return jsonify({"status": "success", "logs": logs_list}), 200
         return jsonify({"status": "success", "message": "No logs found"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
