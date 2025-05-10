@@ -8,6 +8,7 @@
   // Admin actions form data
   let admin_id = "";
   let movie_id = "";
+  let movie_name = "";
   let year_start = 2024;
   let year_end = 2024;
   let page_start = 1;
@@ -46,9 +47,9 @@
   };
 
   // Admin panel actions
-  const addSingleMovie = () => callApi("add_single_movie", "POST", { admin_id, movie_id });
-  const updateSingleMovie = () => callApi("update_single_movie", "PUT", { admin_id, movie_id });
-  const deleteSingleMovie = () => callApi("delete_single_movie", "DELETE", { admin_id, movie_id });
+  const addSingleMovie = () => callApi("add_single_movie", "POST", { admin_id, movie_name });
+  const updateSingleMovie = () => callApi("update_single_movie", "PUT", { admin_id, movie_name });
+  const deleteSingleMovie = () => callApi("delete_single_movie", "DELETE", { admin_id, movie_name });
   const addBatchMovies = () => callApi("add_batch_movies", "POST", { admin_id, year_start, year_end, page_start, page_end });
   const updateBatchMovies = () => callApi("update_batch_movies", "PUT", { admin_id, year_start, year_end, page_start, page_end });
 
@@ -102,7 +103,7 @@
   <!-- Single Movie Actions -->
   <section>
     <h2>Single Movie Actions</h2>
-    <input type="text" placeholder="Movie ID" bind:value={movie_id} />
+    <input type="text" placeholder="Movie Name" bind:value={movie_name} />
     <button on:click={addSingleMovie}>Add Single Movie</button>
     <button on:click={updateSingleMovie}>Update Single Movie</button>
     <button on:click={deleteSingleMovie}>Delete Single Movie</button>
@@ -117,18 +118,28 @@
     {#if batchFormVisible}
       <div class="batch-form">
         <h2>Batch Movie Actions</h2>
-        <p>Start Year:</p>
-        <input type="number" placeholder="Year Start" bind:value={year_start} />
-        <p>End Year:</p>
-        <input type="number" placeholder="Year End" bind:value={year_end} />
-        <p>Start Page:</p>
-        <input type="number" placeholder="Page Start" bind:value={page_start} />
-        <p>End Page:</p>
-        <input type="number" placeholder="Page End" bind:value={page_end} />
-        <button on:click={addBatchMovies}>Add Batch Movies</button>
-        <button on:click={updateBatchMovies}>Update Batch Movies</button>
+        <div class="batch-form-grid">
+          <div class="form-group">
+            <label for="year_start">Start Year:</label>
+            <input id="year_start" type="number" placeholder="Year Start" bind:value={year_start} />
+            <label for="year_end">End Year:</label>
+            <input id="year_end" type="number" placeholder="Year End" bind:value={year_end} />
+          </div>
+        
+          <div class="form-group">
+            <label for="page_start">Start Page:</label>
+            <input id="page_start" type="number" placeholder="Page Start" bind:value={page_start} />
+            <label for="page_end">End Page:</label>
+            <input id="page_end" type="number" placeholder="Page End" bind:value={page_end} />
+          </div>
+        </div>
+        <div>
+          <button on:click={addBatchMovies}>Add Batch Movies</button>
+          <button on:click={updateBatchMovies}>Update Batch Movies</button>
+        </div>
       </div>
     {/if}
+
   </div>
 
   <!-- Response Message -->
@@ -148,16 +159,16 @@
     padding: 20px;
   }
 
-  .search-bar {
+  .search-bar, .batch-actions, section {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
   }
 
   input, button {
-    margin: 5px;
-    padding: 10px;
+    margin: 10px 5px;
+    padding: 10px 15px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     font-size: 1rem;
   }
 
@@ -165,12 +176,20 @@
     background-color: #1e1e1e;
     color: #fff;
     width: 300px;
+    border: 1px solid #444;
+    transition: border-color 0.3s;
+  }
+
+  input:focus {
+    border-color: #888;
+    outline: none;
   }
 
   button {
     background-color: #098577;
     color: white;
     cursor: pointer;
+    transition: background-color 0.3s;
   }
 
   button:hover {
@@ -182,6 +201,7 @@
     padding: 15px;
     background-color: #1e1e1e;
     border-radius: 5px;
+    text-align: center;
   }
 
   .movies-grid {
@@ -197,38 +217,69 @@
     text-align: center;
   }
 
-  .batch-actions {
-    text-align: center;
-    margin-top: 20px;
-  }
-
   .batch-form {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    margin-top: 10px;
-    background-color: #1e1e1e;
-    padding: 15px;
-    border-radius: 5px;
-  }
-  .back-button {
-  margin-top: 20px;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #1e1e1e;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 700px;
+  margin: 20px auto;
 }
 
-.back-button button {
-  background-color: #555;
-  color: #fff;
-  padding: 10px 20px;
+.batch-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.batch-form .form-group {
+  display: flex;
+  flex-direction: column;
+  margin: 0px 20px;
+}
+
+.batch-form input {
+  width: 90%;
   font-size: 1rem;
+  background-color: #1e1e1e;
+  color: #fff;
+  border: 1px solid #444;
+  transition: border-color 0.3s;
+}
+
+.batch-form input:focus {
+  border-color: #888;
+  outline: none;
+}
+
+.batch-form button {
+  background-color: #098577;
+  color: white;
+  margin: 5px;
   border: none;
-  border-radius: 5px;
+  font-size: 1rem;
   cursor: pointer;
+
 }
 
-.back-button button:hover {
-  background-color: #333;
+.batch-form button:hover {
+  background-color: #064E45;
 }
 
+  h1, h2, h3, p {
+    margin-bottom: 10px;
+  }
+
+  p {
+    font-size: 1rem;
+  }
+
+  .error {
+    color: #f44336;
+    text-align: center;
+  }
 </style>

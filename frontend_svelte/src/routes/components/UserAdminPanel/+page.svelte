@@ -59,8 +59,6 @@
         }
     };
 
-    $: fetchData();
-
     onMount(() => {
         redirectToRegisterIfNotAuthenticated();
         fetchData();

@@ -37,6 +37,16 @@ def fetch_movies(year_start, year_end, page=1):
     response = fetch_with_retry(url, params=params)
     return response.json()
 
+def get_movie_id_by_name(name):
+    url = f"{BASE_URL}/search/movie"
+    params = {"api_key": API_KEY, "query": name, "language": "en-US"}
+    response = fetch_with_retry(url, params=params)
+    data = response.json()
+    results = data.get('results')
+    if results:
+        return results[0]['id']  # return the top result
+    return None
+
 def fetch_movie_details(movie_id):
     url = f"{BASE_URL}/movie/{movie_id}"
     params = {"api_key": API_KEY, "language": "en-US"}

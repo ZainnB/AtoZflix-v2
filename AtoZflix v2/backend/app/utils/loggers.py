@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 
-def MovieLog_action(session, admin_id, movie_id, action, details):
+def MovieLog_action(session, admin_id, action, details):
     log = MovieLog(admin_id=admin_id, action=action, details=details, timestamp=datetime.utcnow())
     try:
         session.add(log)

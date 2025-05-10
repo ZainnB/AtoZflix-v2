@@ -2,7 +2,7 @@ from app.models.models import User, Movie, Genre, Actor, Crew, MoviesGenres, Mov
 from app import db
 from flask import Blueprint, request, jsonify
 from app.utils.loggers import MovieLog_action, UserLog_action
-from app.utils.tmdb_importer import fetch_movies, fetch_movie_details, fetch_with_retry, fetch_credits, populate_movies, populate_genres, populate_actors_and_crew
+from app.utils.tmdb_importer import fetch_movies, fetch_movie_details, fetch_with_retry, fetch_credits, populate_movies, populate_genres, populate_actors_and_crew, get_movie_id_by_name
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -14,9 +14,15 @@ BASE_URL = "https://api.themoviedb.org/3"
 @admin_bp.route('/api/add_single_movie', methods=['POST'])
 def add_single_movie():
     admin_id = request.json.get('admin_id')
-    movie_id = request.json.get('movie_id')
+    movie_name = request.json.get('movie_name')
+    if not movie_name:
+        return jsonify({'error': 'Movie name is required'}), 400
 
     try:
+        movie_id = get_movie_id_by_name(movie_name)
+        if not movie_id:
+            return jsonify({'error': 'Movie not found'}), 404
+        # Check if the movie already exists in the database
         details = fetch_movie_details(movie_id)
 
         if db.session.query(Movie).filter_by(movie_id=details['id']).first():
@@ -40,9 +46,15 @@ def add_single_movie():
 @admin_bp.route('/api/update_single_movie', methods=['PUT'])
 def update_single_movie():
     admin_id = request.json.get('admin_id')
-    movie_id = request.json.get('movie_id')
+    movie_name = request.json.get('movie_name')
+    if not movie_name:
+        return jsonify({'error': 'Movie name is required'}), 400
 
     try:
+        movie_id = get_movie_id_by_name(movie_name)
+        if not movie_id:
+            return jsonify({'error': 'Movie not found'}), 404
+        
         movie = db.session.get(Movie, movie_id)
         if not movie:
             return jsonify({'error': 'Movie does not exist in the database'}), 404
@@ -51,9 +63,9 @@ def update_single_movie():
         credits = fetch_credits(movie_id)
 
         # Update the movie entry
-        populate_movies(details)  # Make sure this uses ORM to update or add
-        populate_genres(details)
-        populate_actors_and_crew(credits, movie_id)
+        populate_movies(db.session, details)  # Make sure this uses ORM to update or add
+        populate_genres(db.session, details)
+        populate_actors_and_crew(db.session, credits, movie_id)
 
         MovieLog_action(db.session, admin_id, 'Update', f"Updated movie {details['title']} (ID: {movie_id})")
 
@@ -68,9 +80,15 @@ def update_single_movie():
 @admin_bp.route('/api/delete_single_movie', methods=['DELETE'])
 def delete_single_movie():
     admin_id = request.json.get('admin_id')
-    movie_id = request.json.get('movie_id')
+    movie_name = request.json.get('movie_name')
+    if not movie_name:
+        return jsonify({'error': 'Movie name is required'}), 400
 
     try:
+        movie_id = get_movie_id_by_name(movie_name)
+        if not movie_id:
+            return jsonify({'error': 'Movie not found'}), 404
+        
         movie = db.session.get(Movie, movie_id)
         if not movie:
             return jsonify({'error': 'Movie does not exist in the database'}), 404
