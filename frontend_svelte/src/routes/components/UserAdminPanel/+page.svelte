@@ -3,7 +3,7 @@
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
 
     let selectedOption = 'users'; // Default to 'users'
-    let data = null; // Holds fetched data
+    let data = null;
     let error = null;
     let updateUserData = { user_id: '', username: '', email: '', role: '' };
 
@@ -16,7 +16,8 @@
                 throw new Error('Failed to fetch data');
             }
             const result = await response.json();
-            data = result.users; // Assume API returns 'users' key
+            console.log(result);
+            data = result.user_list;
         } catch (err) {
             error = err.message;
         }
@@ -60,7 +61,7 @@
     };
 
     onMount(() => {
-        redirectToRegisterIfNotAuthenticated();
+        // redirectToRegisterIfNotAuthenticated();
         fetchData();
     });
 </script>
