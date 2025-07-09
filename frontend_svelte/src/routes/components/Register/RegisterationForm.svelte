@@ -1,4 +1,6 @@
 <script>
+    import { goto } from "$app/navigation";
+
   let email = "";
   let username = "";
   let password = "";
@@ -21,6 +23,9 @@
       if (response.ok) {
         const result = await response.json();
         successMessage = result.message;
+        setTimeout(() => {
+          window.location.href = "./Home"
+        }, 1000); 
       } else {
         const error = await response.json();
         errorMessage = error.message || "Registration failed.";
@@ -35,7 +40,7 @@
   <!-- Heading Section -->
   <h1>Endless Recommendations, Tailored just for You.</h1>
   <h2>
-    Explore movies that match your taste. Ready to discover your next favorite?
+    Explore movies that match your taste. Have some questions? Head down to FAQs.
   </h2>
   <h2>Enter your email to get personalized recommendations.</h2>
 

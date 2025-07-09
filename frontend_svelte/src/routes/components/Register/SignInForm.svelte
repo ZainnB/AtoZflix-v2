@@ -2,6 +2,7 @@
   export let onClose; // Function to close the form
   let usernameOrEmail = ""; // Variable to hold username or email
   let password = "";
+  let errorMessage = "";
 
   const handleSignIn = async () => {
       console.log("Username or Email:", usernameOrEmail); // Debug input values
@@ -16,8 +17,6 @@
       const data = await response.json();
 
       if (data.success) {
-          alert("Login successful!");
-
           // Save user data to localStorage
           localStorage.setItem(
               "user",
@@ -35,7 +34,7 @@
               window.location.href = "./Home";
           }
       } else {
-          alert(data.message || "Invalid credentials!");
+          errorMessage = data.message || "Invalid credentials! Sign-Up failed. Try Again.";
       }
   };
 </script>
@@ -64,6 +63,9 @@
         />
   
         <button type="submit" >Sign In</button>
+        {#if errorMessage}
+        <p>{errorMessage}</p>
+        {/if}
       </form>
     </div>
   </div>
@@ -101,6 +103,14 @@
       display: block;
       margin-bottom: 8px;
       color: rgb(0, 0, 0);
+      font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+    }
+
+    .form-container p {
+      color: #000000;
+      font-size: 14px;
+      margin-top: 15px;
+      margin-bottom: auto;
       font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
     }
   
