@@ -1,12 +1,20 @@
+<script lang="ts">
+    interface Props {
+        logo?: string;
+    }
+
+    let { logo = "/assets/img/logo.png" }: Props = $props();
+</script>
+
 <footer class="footer">
     <!-- Main Footer Content -->
     <div class="footer-container">
         <!-- Brand Section -->
         <div class="footer-brand">
-            <h2 class="brand-title">AtoZFlix</h2>
-            <p class="brand-tagline">Your Gateway to Cinematic Excellence</p>
+            <img src={logo || "/placeholder.svg"} alt="AtoZFlix Logo" class="logo" />
+            <p class="brand-description">AtoZFlix is a personalized movie recommendation platform that curates the perfect cinematic experience tailored just for you. Discover, rate, and enjoy movies from around the world.</p>
         </div>
-
+        
         <!-- Navigation Links -->
         <div class="footer-sections">
             <!-- Browse Section -->
@@ -17,7 +25,6 @@
                     <li><a href="/actors" class="footer-link">Actors</a></li>
                     <li><a href="/countries" class="footer-link">Countries</a></li>
                     <li><a href="/trending" class="footer-link">Trending</a></li>
-                    <li><a href="/new-releases" class="footer-link">New Releases</a></li>
                 </ul>
             </div>
 
@@ -28,55 +35,39 @@
                     <li><a href="/favorites" class="footer-link">Favorites</a></li>
                     <li><a href="/watchlater" class="footer-link">Watch Later</a></li>
                     <li><a href="/personalized" class="footer-link">For You</a></li>
-                    <li><a href="/history" class="footer-link">Watch History</a></li>
                     <li><a href="/ratings" class="footer-link">My Ratings</a></li>
                 </ul>
             </div>
 
-            <!-- Support Section -->
+            <!-- Support & Connect Section -->
             <div class="footer-section">
-                <h3 class="section-title">Support</h3>
+                <h3 class="section-title">Support & Connect</h3>
                 <ul class="footer-links">
-                    <li><a href="/help" class="footer-link">Help Center</a></li>
-                    <li><a href="/contact" class="footer-link">Contact Us</a></li>
                     <li><a href="/feedback" class="footer-link">Feedback</a></li>
                     <li><a href="/privacy" class="footer-link">Privacy Policy</a></li>
                     <li><a href="/terms" class="footer-link">Terms of Service</a></li>
+                    <li><a href="/about" class="footer-link">About Me</a></li>
                 </ul>
             </div>
-
-            <!-- Connect Section -->
+            
+            <!-- Creator Section -->
             <div class="footer-section">
-                <h3 class="section-title">Connect</h3>
-                <ul class="footer-links">
-                    <li><a href="/about" class="footer-link">About Us</a></li>
-                    <li><a href="/blog" class="footer-link">Blog</a></li>
-                    <li><a href="/careers" class="footer-link">Careers</a></li>
-                    <li><a href="/press" class="footer-link">Press</a></li>
-                    <li><a href="/api" class="footer-link">Developer API</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Creator Section -->
-        <div class="creator-section">
-            <div class="creator-card">
-                <div class="creator-avatar">
-                    <img src="/assets/img/ZainB.png" alt="Zain Baig" class="creator-pic" />
-                    <div class="creator-glow"></div>
-                </div>
-                <div class="creator-info">
-                    <h4 class="creator-name">Zain Baig</h4>
-                    <p class="creator-role">Full Stack Developer</p>
-                    <div class="creator-links">
-                        <a href="https://www.linkedin.com/in/zain-baig-04790b260/" target="_blank" class="social-link linkedin">
-                            <span class="social-icon">💼</span>
-                            LinkedIn
-                        </a>
-                        <a href="https://github.com/zainbaig" target="_blank" class="social-link github">
-                            <span class="social-icon">🐱</span>
-                            GitHub
-                        </a>
+                <h3 class="section-title">Creator</h3>
+                <div class="creator-card">
+                    <div class="creator-info">
+                        <img src="/assets/img/ZainB.png" alt="Zain Baig" class="creator-pic" />
+                        <div class="creator-details">
+                            <h4 class="creator-name">Zain Baig</h4>
+                            <p class="creator-role">Full Stack Developer</p>
+                            <div class="creator-links">
+                                <a href="https://www.linkedin.com/in/zain-baig-04790b260/" target="_blank" class="social-link">
+                                    LinkedIn
+                                </a>
+                                <a href="https://github.com/zainbaig" target="_blank" class="social-link">
+                                    GitHub
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -88,7 +79,7 @@
         <div class="footer-bottom-content">
             <!-- Language Selector -->
             <div class="language-selector">
-                <select name="language" id="language" class="language-dropdown" oninput={(event) => event.preventDefault()}>
+                <select name="language" id="language" class="language-dropdown">
                     <option value="en">🇺🇸 English</option>
                     <option value="ur">🇵🇰 اردو</option>
                     <option value="es">🇪🇸 Español</option>
@@ -111,91 +102,59 @@
             </div>
         </div>
     </div>
-
-    <!-- Cinematic Background Elements -->
-    <div class="cinema-bg">
-        <div class="film-strip"></div>
-        <div class="spotlight spotlight-1"></div>
-        <div class="spotlight spotlight-2"></div>
-    </div>
 </footer>
-
+    
 <style>
 .footer {
-    position: relative;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+    background: #111;
     color: #ffffff;
-    padding: 60px 0 20px;
+    padding: 40px 0 20px;
     font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
-    overflow: hidden;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid #333;
 }
 
 .footer-container {
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 40px;
-    position: relative;
-    z-index: 2;
+    padding: 0 30px;
 }
 
 /* Brand Section */
 .footer-brand {
     text-align: center;
-    margin-bottom: 50px;
+    margin-bottom: 40px;
 }
 
-.brand-title {
-    font-size: 3rem;
-    font-weight: 700;
-    background: linear-gradient(45deg, #00d4aa, #098577, #00d4aa);
-    background-size: 200% 200%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: gradientShift 3s ease-in-out infinite;
-    margin-bottom: 10px;
-    text-shadow: 0 0 30px rgba(0, 212, 170, 0.3);
+.logo {
+    width: 140px;
+    height: auto;
+    margin-bottom: 15px;
 }
 
-.brand-tagline {
-    font-size: 1.1rem;
+.brand-description {
+    font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.7);
-    font-style: italic;
-}
-
-@keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
 }
 
 /* Navigation Sections */
 .footer-sections {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 40px;
-    margin-bottom: 50px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+    margin-bottom: 40px;
 }
 
 .footer-section {
-    background: rgba(255, 255, 255, 0.02);
-    padding: 25px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-}
-
-.footer-section:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(0, 212, 170, 0.3);
-    transform: translateY(-2px);
+    padding: 0;
 }
 
 .section-title {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    color: #00d4aa;
+    color: #098577;
     margin-bottom: 20px;
     position: relative;
 }
@@ -207,7 +166,7 @@
     left: 0;
     width: 30px;
     height: 2px;
-    background: linear-gradient(90deg, #00d4aa, transparent);
+    background: #098577;
 }
 
 .footer-links {
@@ -226,137 +185,79 @@
     font-size: 0.95rem;
     transition: all 0.3s ease;
     display: inline-block;
-    position: relative;
 }
 
 .footer-link:hover {
-    color: #00d4aa;
-    transform: translateX(5px);
-}
-
-.footer-link::before {
-    content: '▶';
-    position: absolute;
-    left: -15px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    color: #00d4aa;
-    font-size: 0.8rem;
-}
-
-.footer-link:hover::before {
-    opacity: 1;
+    color: #098577;
+    transform: translateX(3px);
 }
 
 /* Creator Section */
-.creator-section {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 40px;
+.creator-card {
+    margin-top: 0;
 }
 
-.creator-card {
-    background: linear-gradient(135deg, rgba(0, 212, 170, 0.1), rgba(9, 133, 119, 0.1));
-    padding: 30px;
-    border-radius: 20px;
-    border: 1px solid rgba(0, 212, 170, 0.2);
-    backdrop-filter: blur(15px);
+.creator-info {
     display: flex;
     align-items: center;
-    gap: 25px;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.creator-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 212, 170, 0.2);
-}
-
-.creator-avatar {
-    position: relative;
+    gap: 15px;
 }
 
 .creator-pic {
-    width: 80px;
-    height: 80px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid #00d4aa;
-    position: relative;
-    z-index: 2;
+    border: 2px solid #333;
 }
 
-.creator-glow {
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    background: radial-gradient(circle, rgba(0, 212, 170, 0.3), transparent);
-    border-radius: 50%;
-    animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.1); opacity: 0.3; }
+.creator-details {
+    flex: 1;
 }
 
 .creator-name {
-    font-size: 1.4rem;
+    font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
     color: #ffffff;
 }
 
 .creator-role {
     color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 15px;
-    font-size: 0.9rem;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
 }
 
 .creator-links {
     display: flex;
-    gap: 15px;
+    gap: 12px;
 }
 
 .social-link {
-    display: flex;
-    align-items: center;
-    gap: 8px;
     color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
-    font-size: 0.9rem;
-    padding: 8px 12px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #333;
     transition: all 0.3s ease;
 }
 
 .social-link:hover {
-    background: rgba(0, 212, 170, 0.2);
-    color: #00d4aa;
-    transform: translateY(-2px);
-}
-
-.social-icon {
-    font-size: 1.1rem;
+    color: #098577;
+    border-color: #098577;
 }
 
 /* Footer Bottom */
 .footer-bottom {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 30px;
-    position: relative;
-    z-index: 2;
+    border-top: 1px solid #333;
+    padding-top: 25px;
 }
 
 .footer-bottom-content {
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 40px;
+    padding: 0 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -365,20 +266,18 @@
 }
 
 .language-dropdown {
-    background: rgba(255, 255, 255, 0.1);
+    background: #1a1a1a;
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid #333;
     padding: 10px 15px;
-    border-radius: 8px;
+    border-radius: 4px;
     font-size: 0.9rem;
     cursor: pointer;
-    backdrop-filter: blur(10px);
     transition: all 0.3s ease;
 }
 
 .language-dropdown:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: #00d4aa;
+    border-color: #098577;
 }
 
 .copyright {
@@ -402,62 +301,6 @@
     font-size: 0.9rem;
 }
 
-/* Cinematic Background Elements */
-.cinema-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.film-strip {
-    position: absolute;
-    top: 0;
-    left: -100px;
-    width: 200px;
-    height: 100%;
-    background: repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 10px,
-        rgba(255, 255, 255, 0.02) 10px,
-        rgba(255, 255, 255, 0.02) 20px
-    );
-    transform: rotate(-15deg);
-    opacity: 0.3;
-}
-
-.spotlight {
-    position: absolute;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0, 212, 170, 0.1), transparent);
-    animation: spotlightMove 8s ease-in-out infinite;
-}
-
-.spotlight-1 {
-    width: 300px;
-    height: 300px;
-    top: -150px;
-    right: -150px;
-    animation-delay: 0s;
-}
-
-.spotlight-2 {
-    width: 200px;
-    height: 200px;
-    bottom: -100px;
-    left: -100px;
-    animation-delay: 4s;
-}
-
-@keyframes spotlightMove {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(20px, -20px) scale(1.1); }
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
     .footer-container {
@@ -466,10 +309,10 @@
     
     .footer-sections {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 25px;
     }
     
-    .creator-card {
+    .creator-info {
         flex-direction: column;
         text-align: center;
     }
@@ -478,10 +321,15 @@
         flex-direction: column;
         text-align: center;
         gap: 15px;
+        padding: 0 20px;
     }
     
-    .brand-title {
-        font-size: 2rem;
+    .logo {
+        width: 100px;
+    }
+    
+    .brand-description {
+        font-size: 0.9rem;
     }
 }
 </style>

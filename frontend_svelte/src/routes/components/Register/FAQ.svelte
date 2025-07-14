@@ -19,6 +19,7 @@
         >
             <svg
                 class="icon"
+                class:rotated={activeQuestion === index}
                 width="24"
                 height="24"
                 fill="none"
@@ -39,32 +40,42 @@
 
 <style>
     .faq {
-        padding: 100px 150px;
+        padding: 80px 150px;
         background-color: #111;
         color: white;
+        position: relative;
     }
 
     .faq h2 {
-        font-size: 2rem;
+        font-size: 2.2rem;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 40px;
         font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+        color: #ffffff;
+        font-weight: 600;
     }
 
     .faqbox {
         display: flex;
         align-items: center;
         width: 100%;
-        max-width: 800px;
-        margin: 10px auto;
-        padding: 15px;
+        max-width: 900px;
+        margin: 0 auto 8px;
+        padding: 20px;
         background: #111;
         cursor: pointer;
         border: none;
         color: white;
-        font-size: 1rem;
+        font-size: 1.1rem;
         border-bottom: 1px solid #333;
         font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+        transition: all 0.3s ease;
+        border-radius: 4px;
+    }
+
+    .faqbox:hover {
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom-color: #098577;
     }
 
     .faqbox:hover .icon {
@@ -72,21 +83,49 @@
     }
 
     .faqbox svg {
-        margin-right: 15px; /* Space between icon and text */
-        transition: stroke 0.2s;
-        flex-shrink: 0; /* Prevent the icon from resizing */
+        margin-right: 20px;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .faqbox svg.rotated {
+        transform: rotate(180deg);
     }
 
     .faqbox span {
         text-align: left;
-        flex: 1; /* Allow the text to take remaining space */
+        flex: 1;
+        font-weight: 500;
     }
 
     .faq-content {
-        padding: 15px;
-        background: #222;
-        margin-top: 5px;
+        max-width: 900px;
+        margin: 0 auto 20px;
+        padding: 20px 25px;
+        background: #1a1a1a;
         border-left: 3px solid #098577;
-        font-family: Arial, sans-serif;
+        font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.6;
+        border-radius: 0 4px 4px 0;
+    }
+
+    @media (max-width: 768px) {
+        .faq {
+            padding: 60px 20px;
+        }
+        
+        .faq h2 {
+            font-size: 1.8rem;
+        }
+        
+        .faqbox {
+            font-size: 1rem;
+            padding: 18px;
+        }
+        
+        .faq-content {
+            padding: 18px 20px;
+        }
     }
 </style>

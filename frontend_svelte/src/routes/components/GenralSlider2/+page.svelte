@@ -1,3 +1,4 @@
+ <!-- GenralSlider2 used in Actors/Cres view all and searches for displaying a slider of movies or based on the provided API name, type, and value. -->
 <script>
     import { onMount } from "svelte";
     import MovieCard from "../Slider/movie_card.svelte";

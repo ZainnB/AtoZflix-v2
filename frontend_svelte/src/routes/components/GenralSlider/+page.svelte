@@ -1,3 +1,4 @@
+<!-- GenreSlider used for genres and country to display a slider of movies based on type, and value. -->
 <script>
     import { onMount } from "svelte";
     import MovieCard from "../Slider/movie_card.svelte";
@@ -36,12 +37,17 @@
         currentIndex -= 1;
       }
     }
+
+    function viewAll() {
+    const url = `/components/ViewAll?type=${encodeURIComponent(api)}&heading=${encodeURIComponent(heading)}`;
+    window.location.href = url;
+    }
   </script>
   
   <div class="latest-movies">
     <div class="slider-header">
       <h2>{heading}</h2>
-      <button class="view-all-btn">View All</button>
+      <button class="view-all-btn" on:click={viewAll}>View All</button>
     </div>
   
     <div class="slider-wrapper">
@@ -58,83 +64,86 @@
   </div>
   
   <style>
-    .latest-movies {
-      width: 100%;
-      max-width: 1400px;
-      margin: 0.2rem auto;
-      color: #ffffff;
-      background-color: #121212;
-      padding: 0.2rem;
-      border-radius: 7px;
-    }
-  
-    .slider-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem; /* Reduced gap between header and slider */
-    }
-  
-    .slider-header h2 {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin: 0;
-    }
-  
-    .view-all-btn {
-      background-color: transparent;
-      color: #098577;
-      border: none;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: color 0.3s ease;
-    }
-  
-    .view-all-btn:hover {
-      color: #06eE45; /* Brighter red on hover */
-    }
-  
-    .slider-wrapper {
-      display: flex;
-      align-items: center;
-      position: relative;
-    }
-  
-    .slider {
-      display: flex;
-      overflow: hidden;
-      gap: 0.5rem; /* Reduced gap between movies */
-      width: 100%;
-    }
-  
-    .slider-btn {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 3rem; /* Thin horizontal buttons */
-      background-color: transparent;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      z-index: 1;
-      transition: background-color 0.3s ease;
-    }
-  
-    .slider-btn.left {
-      left: 0;
-    }
-  
-    .slider-btn.right {
-      right: 0;
-    }
-  
-    .slider-btn:hover {
-      background-color: rgba(0, 0, 0, 0.6); /* Darker on hover */
-    }
-  
-    .slider-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  </style>
-  
+  .latest-movies {
+    width: 100%;
+    max-width: 1500px;
+    margin: 1.5rem auto;
+    color: #fff;
+    background-color: #000000;
+    padding: 0.2rem;
+    font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+  }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.7rem; /* Reduced gap between header and slider */
+    margin-left: 60px;
+    margin-right: 40px;
+  }
+
+  .slider-header h2 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+  }
+
+  .view-all-btn {
+    background-color: transparent;
+    color: #098577;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+
+  .view-all-btn:hover {
+    color: #064e45;
+  }
+
+  .slider-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
+  .slider {
+    display: flex;
+    overflow: hidden;
+    gap: 0.5rem; /* Reduced gap between movies */
+    width: 100%;
+    margin-left: 30px;
+  }
+
+  .slider-btn {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3rem; /* Thin horizontal buttons */
+    color: #fff;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+    transition: background-color 0.3s ease;
+  }
+
+  .slider-btn.left {
+    left: 0;
+  }
+
+  .slider-btn.right {
+    right: 0;
+  }
+
+  .slider-btn:hover {
+    background: rgba(255, 255, 255, 0.7);
+    color: black;
+  }
+
+  .slider-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+</style>

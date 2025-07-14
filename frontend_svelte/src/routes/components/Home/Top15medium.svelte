@@ -6,9 +6,14 @@
 
     onMount(async () => {
         try {
-            const response = await fetch("http://127.0.0.1:5000/api/trending?limit=20");
+            const response = await fetch(
+                "http://127.0.0.1:5000/api/trending?limit=20",
+            );
             if (!response.ok) {
-                console.error("Failed to fetch trending movies:", response.status);
+                console.error(
+                    "Failed to fetch trending movies:",
+                    response.status,
+                );
                 return;
             }
 
@@ -28,13 +33,16 @@
     }
 
     function slidePrev() {
-        currentIndex = (currentIndex - 1 + Math.ceil(movies.length / 4)) % Math.ceil(movies.length / 4); // Move to the previous set
+        currentIndex =
+            (currentIndex - 1 + Math.ceil(movies.length / 4)) %
+            Math.ceil(movies.length / 4); // Move to the previous set
     }
 
     function startAutoSlide() {
         setInterval(() => {
             slideNext();
-        }, 5000); // Slide every 5 seconds
+        }, 9000);
+        s;
     }
 </script>
 
@@ -44,21 +52,26 @@
         {#each Array(Math.ceil(movies.length / 4)) as _, slideIndex}
             <div class="slide">
                 {#each movies.slice(slideIndex * 4, slideIndex * 4 + 4) as movie}
-                    <div class="movie-card">
-                        <div
-                            class="movie-poster"
-                            style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.8)), url(https://image.tmdb.org/t/p/w500{movie.backdrop_path})"
-                        >
-                            <div class="movie-info">
-                                <h3>{movie.title}</h3>
-                                <div class="genres">
-                                    {#each movie.genres as genre}
-                                        <span>{genre}</span>
-                                    {/each}
+                    <a
+                        href={`/components/MovieDetail?movie_id=${movie.movie_id}`}
+                        class="movie-link"
+                    >
+                        <div class="movie-card">
+                            <div
+                                class="movie-poster"
+                                style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.8)), url(https://image.tmdb.org/t/p/w500{movie.backdrop_path})"
+                            >
+                                <div class="movie-info">
+                                    <h3>{movie.title}</h3>
+                                    <div class="genres">
+                                        {#each movie.genres as genre}
+                                            <span>{genre}</span>
+                                        {/each}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 {/each}
             </div>
         {/each}
@@ -76,8 +89,9 @@
     .top15-medium {
         position: relative;
         overflow: hidden;
-        background-color: #121212;
-        padding: 2rem;
+        background-color: #000000;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
         width: 100%;
         height: 100%;
         box-sizing: border-box;
@@ -96,16 +110,27 @@
         gap: 1rem; /* Spacing between movie cards */
     }
 
+    .movie-link {
+    text-decoration: none;
+    display: block;
+    height: 100%;
+    width: 100%;
+    color: inherit; /* so text color stays white */
+    }
+
+
     /* Movie Card Styling */
     .movie-card {
-        flex: 0 0 24%; 
+        flex: 0 0 24%;
         border-radius: 10px;
         overflow: hidden;
         background: transparent;
         display: flex;
         flex-direction: column;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        transition:
+            transform 0.3s ease,
+            box-shadow 0.3s ease;
         height: 200px;
     }
 
@@ -116,7 +141,7 @@
 
     /* Poster with Gradient Overlay */
     .movie-poster {
-        height: 100%; /* Adjust poster height relative to card */
+        height: 100%;
         background-size: cover;
         background-position: center;
         position: relative;
@@ -124,14 +149,19 @@
 
     /* Transparent Movie Info */
     .movie-info {
-        padding: 1rem;
-        padding-top: 45%;
+        padding: 0.5rem;
+        margin-top: 130px;
         color: rgb(255, 255, 255);
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
-        font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
-        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.155), rgba(0, 0, 0, 0.681));
+        font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
+            "Ubuntu", sans-serif;
+        background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.05),
+            rgba(0, 0, 0, 0.4)
+        );
     }
 
     .movie-info h3 {
@@ -156,10 +186,9 @@
     .slider-buttons {
         position: absolute;
         top: 50%;
-        right: 1rem;
+        right: 0.2rem;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
         transform: translateY(-50%);
     }
 
@@ -167,9 +196,8 @@
         background: rgba(0, 0, 0, 0.7);
         color: white;
         border: none;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
+        width: 47px;
+        height: 100px;
         display: flex;
         align-items: center;
         justify-content: center;

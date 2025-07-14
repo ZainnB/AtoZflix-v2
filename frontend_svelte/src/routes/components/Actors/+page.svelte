@@ -81,7 +81,7 @@
           api_name="actor-movies"
           type="actor" 
           value={actor_id} 
-          limit={5} />
+          limit={20} />
       </div>
     {/each}
   </div>

@@ -55,7 +55,7 @@
         position: relative;
         min-height: 100vh;
         overflow: hidden;
-        background-color: #121212
+        background-color: #000000
     }
 
     .navbar-wrapper {
@@ -80,6 +80,7 @@
 
     .top15-wrapper {
         z-index: 1;
+        margin-top: 1rem;
     }
 
     .latest-movies-wrapper {
