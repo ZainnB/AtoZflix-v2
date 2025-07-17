@@ -7,9 +7,9 @@
   import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
   import { onMount } from "svelte";
 
-  onMount(async ()=>{
-    redirectToHomeIfAuthenticated();
-  })
+  onMount(async () => {
+    redirectToRegisterIfNotAuthenticated();
+  });
   const faqQuestions = [
     {
       title: "How does the recommendation system understand my preferences?",
@@ -48,10 +48,11 @@
 
 <style>
   div {
-    font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+    font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
+      "Ubuntu", sans-serif;
     margin: 0;
     padding: 0;
-    box-sizing: border-box; 
+    box-sizing: border-box;
     top: 0;
     left: 0;
     width: 100vw;

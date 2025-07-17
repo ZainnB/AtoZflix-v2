@@ -139,9 +139,8 @@
         {#key currentIndex}
             <div
                 class="slider-bg"
-                style="background-image: url(https://image.tmdb.org/t/p/original{movies[
-                    currentIndex
-                ].backdrop_path})"
+                style= "background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 75%, #000000 100%), 
+                    url(https://image.tmdb.org/t/p/original{movies[currentIndex].backdrop_path})"
                 in:fly={{ x: 300 * slideDirection, duration: 500, delay: 100 }}
                 out:fly={{ x: -300 * slideDirection, duration: 400 }}
             >
@@ -293,12 +292,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(
-            to right,
-            rgba(0, 0, 0, 0.8) 0%,
-            rgba(0, 0, 0, 0.4) 50%,
-            rgba(0, 0, 0, 0.2) 100%
-        );
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, #000000 100%);
         z-index: 1;
     }
 

@@ -2,7 +2,6 @@
     import { onMount } from "svelte";
     import GeneralSlider2 from "../GenralSlider2/+page.svelte";
     import Navbar from "../Home/Navbar2.svelte";
-    import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
@@ -10,7 +9,6 @@
     // State variables
     let topActors = [];
     const limit = 10;
-    let sidebar = false;
     let searchQuery = ""; // Query for searching actors
 
     onMount(async () => {
@@ -52,9 +50,6 @@
 <div class="wrapper">
   <div class="navbar-wrapper">
       <Navbar />
-  </div>
-  <div class="sidebar-wrapper">
-      <SideBar bind:open={sidebar} />
   </div>
 
   <div class="content">
@@ -105,13 +100,6 @@
     left: 0;
     width: 100%;
     z-index: 10;
-  }
-
-  .sidebar-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
   }
 
   .search-section {

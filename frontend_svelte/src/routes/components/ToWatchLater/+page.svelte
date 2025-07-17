@@ -2,7 +2,6 @@
     import { onMount } from 'svelte';
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
     import Navbar from "../Home/Navbar2.svelte";
-    import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
     import MovieCard from '../Slider/movie_card.svelte';
@@ -11,7 +10,6 @@
     let watchlist = [];
     let isLoading = true;
     let error = '';
-    let sidebar = false;
 
     // Check if the user is authenticated and redirect if not
     onMount(async () => {
@@ -68,9 +66,6 @@
     <div class="navbar-wrapper">
         <Navbar />
     </div>
-    <div class="sidebar-wrapper">
-        <SideBar bind:open={sidebar} />
-    </div>
     
     <div class="watchlist-wrapper">
         {#if isLoading}
@@ -110,13 +105,6 @@
     left: 0;
     width: 100%;
     z-index: 10;
-}
-
-.sidebar-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
 }
 
 .watchlist-wrapper {

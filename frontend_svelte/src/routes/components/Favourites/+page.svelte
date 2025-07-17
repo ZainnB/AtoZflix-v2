@@ -1,17 +1,15 @@
 <script>
-    import { onMount } from 'svelte';
+    import { onMount } from "svelte";
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
     import Navbar from "../Home/Navbar2.svelte";
-    import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
-    import MovieCard from '../Slider/movie_card.svelte';
+    import MovieCard from "../Slider/movie_card.svelte";
 
     let user_id = null;
     let favourites = [];
     let isLoading = true;
-    let error = '';
-    let sidebar = false;
+    let error = "";
 
     // Check if the user is authenticated and redirect if not
     onMount(async () => {
@@ -20,7 +18,9 @@
 
         // Fetch movie details
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/get_favourites?user_id=${user_id}`);
+            const response = await fetch(
+                `http://127.0.0.1:5000/api/get_favourites?user_id=${user_id}`,
+            );
             if (!response.ok) throw new Error("Failed to fetch favourites");
             const data = await response.json();
             favourites = data.favourites || [];
@@ -33,7 +33,9 @@
 
     async function fetchFavourites() {
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/get_favourites?user_id=${user_id}`);
+            const response = await fetch(
+                `http://127.0.0.1:5000/api/get_favourites?user_id=${user_id}`,
+            );
             if (!response.ok) throw new Error("Failed to fetch favourites");
             const data = await response.json();
             favourites = data.favourites || [];
@@ -48,32 +50,27 @@
     async function removeFavourite(movieId) {
         try {
             const url = `http://127.0.0.1:5000/api/remove_favourite`;
-            console.log(user_id,movieId)
+            console.log(user_id, movieId);
             const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id, movie_id: movieId  }),
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ user_id, movie_id: movieId }),
             });
             if (!response.ok) throw new Error("Failed to remove the movie");
             await fetchFavourites();
-            } catch (e) {
-            alert(e.message || 'An error occurred while removing the movie.');
-            }
+        } catch (e) {
+            alert(e.message || "An error occurred while removing the movie.");
+        }
     }
-
 </script>
-
 
 <div class="wrapper">
     <div class="navbar-wrapper">
         <Navbar />
     </div>
-    <div class="sidebar-wrapper">
-        <SideBar bind:open={sidebar} />
-    </div>
-    
+
     <div class="favourites-wrapper">
         {#if isLoading}
             <p>Loading your favourites...</p>
@@ -84,9 +81,19 @@
         {:else}
             {#each favourites as movie}
                 <div class="movie-card">
-                    <MovieCard poster_path={movie.poster_path} movie_id={movie.movie_id} />
-                    <p class="added-at">Added on: {new Date(movie.added_at).toLocaleDateString()}</p>
-                    <button class="remove-button" on:click={() => removeFavourite(movie.movie_id)}>
+                    <MovieCard
+                        poster_path={movie.poster_path}
+                        movie_id={movie.movie_id}
+                    />
+                    <p class="added-at">
+                        Added on: {new Date(
+                            movie.added_at,
+                        ).toLocaleDateString()}
+                    </p>
+                    <button
+                        class="remove-button"
+                        on:click={() => removeFavourite(movie.movie_id)}
+                    >
                         Remove from Favourites
                     </button>
                 </div>
@@ -98,29 +105,23 @@
 </div>
 
 <style>
-
-.wrapper {
-    position: relative;
-    min-height: 100vh;
-    background-color: #121212;
-    font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
-    overflow: hidden;
-  }
-
-  .navbar-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 10;
-  }
-
-  .sidebar-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+    .wrapper {
+        position: relative;
+        min-height: 100vh;
+        background-color: #121212;
+        font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
+            "Ubuntu", sans-serif;
+        overflow: hidden;
     }
+
+    .navbar-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 10;
+    }
+
     .favourites-wrapper {
         display: grid;
         grid-template-columns: repeat(5, 1fr);

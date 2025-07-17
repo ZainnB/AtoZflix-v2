@@ -106,7 +106,7 @@
     
 <style>
 .footer {
-    background: #111;
+    background: #000000;
     color: #ffffff;
     padding: 40px 0 20px;
     font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;

@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 from app import db
-from app.models.models import Movie, Genre, MoviesGenres, Actor, MoviesActors, Crew, MoviesCrew
+from app.models.models import Movie, Genre, MoviesGenres, Actor, MoviesActors, Crew, MoviesCrew, Country, MoviesCountries, Keyword, MoviesKeywords
 import time
 from flask import Blueprint, request, jsonify
 
@@ -59,7 +59,14 @@ def fetch_credits(movie_id):
     response = fetch_with_retry(url, params=params)
     return response.json()
 
+def fetch_keywords(movie_id):
+    url = f"{BASE_URL}/movie/{movie_id}/keywords"
+    params = {"api_key": API_KEY}
+    response = fetch_with_retry(url, params=params)
+    return response.json()
+
 def populate_movies(session, movie):
+    # 1. Create or update the Movie
     new_movie = Movie(
         movie_id=movie['id'],
         title=movie['title'],
@@ -71,16 +78,36 @@ def populate_movies(session, movie):
         runtime=movie.get('runtime', 0),
         overview=movie.get('overview', 'No Overview'),
         production_companies=', '.join([c['name'] for c in movie.get('production_companies', [])]),
-        production_countries=', '.join([c['name'] for c in movie.get('production_countries', [])]),
         rating_avg=movie['vote_average'],
         rating_count=movie['vote_count'],
-        country=', '.join([c['name'] for c in movie.get('production_countries', [])]),
-        backdrop_path=movie.get('backdrop_path', 'Backdrop is not available'),
-        poster_path=movie.get('poster_path', 'Poster is not available'),
-        adult=movie['adult']
+        backdrop_path=movie.get('backdrop_path', ''),
+        poster_path=movie.get('poster_path', ''),
+        adult=movie.get('adult', False)
     )
-    session.merge(new_movie)  # INSERT OR UPDATE
+    session.merge(new_movie)
 
+    # 2. Link Countries (Many-to-Many)
+    for country_data in movie.get('production_countries', []):
+        country_name = country_data['name']
+
+        # Get or create country
+        country = session.query(Country).filter_by(country_name=country_name).first()
+        if not country:
+            country = Country(country_name=country_name)
+            session.add(country)
+            session.flush()
+
+        # Link if not already linked
+        exists = session.query(MoviesCountries).filter_by(
+            movie_id=new_movie.movie_id,
+            country_id=country.country_id
+        ).first()
+
+        if not exists:
+            session.add(MoviesCountries(
+                movie_id=new_movie.movie_id,
+                country_id=country.country_id
+            ))
 
 
 def populate_genres(session, movie):
@@ -115,3 +142,10 @@ def populate_actors_and_crew(session, credits, movie_id):
 
             movie_crew = MoviesCrew(movie_id=movie_id, crew_id=crew['id'])
             session.merge(movie_crew)
+
+def populate_keywords(session, movie_id):
+    response = fetch_keywords(movie_id)
+    for keyword in response.get('keywords', []):
+        keyword_obj = Keyword(keyword_id=keyword['id'], keyword_name=keyword['name'])
+        session.merge(keyword_obj)
+        session.merge(MoviesKeywords(movie_id=movie_id, keyword_id=keyword['id']))

@@ -14,6 +14,7 @@ def register():
     email=data.get('email')
     username=data.get('username')
     password=data.get('password')
+    created_at=data.get('created_at')
 
     if(not email or not username or not password):
         return jsonify({'message':'All fields are required'}),400
@@ -25,7 +26,7 @@ def register():
         return jsonify({'message':'User already exists'}),400
     
     hashed_password=hash_password(password)
-    new_user=User(email=email,username=username,password=hashed_password)
+    new_user=User(email=email,username=username,password=hashed_password, created_at=created_at)
 
     try:
         db.session.add(new_user)

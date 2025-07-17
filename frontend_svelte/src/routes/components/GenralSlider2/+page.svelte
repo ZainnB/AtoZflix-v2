@@ -66,7 +66,7 @@
     .latest-movies {
       width: 100%;
       max-width: 1400px;
-      color: #ffffff;
+      color: #000000;
       border-radius: 7px;
       display: flex;
       flex-direction: column;

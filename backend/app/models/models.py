@@ -1,4 +1,5 @@
 from app import db
+from datetime import datetime
 
 class Movie(db.Model):
     __tablename__ = 'Movies'
@@ -12,7 +13,6 @@ class Movie(db.Model):
     runtime = db.Column(db.Integer, nullable=False, default=0)
     overview = db.Column(db.Text, nullable=False, default='No Overview')
     production_companies = db.Column(db.Text, nullable=False)
-    production_countries = db.Column(db.Text, nullable=False)
     rating_avg = db.Column(db.Float, nullable=False)
     rating_count = db.Column(db.Integer, nullable=False)
     country = db.Column(db.String(255), nullable=False, default='Unknown')
@@ -29,6 +29,16 @@ class MoviesGenres(db.Model):
     __tablename__ = 'Movies_Genres'
     movie_id = db.Column(db.Integer, db.ForeignKey('Movies.movie_id'), primary_key=True)
     genre_id = db.Column(db.Integer, db.ForeignKey('Genres.genre_id'), primary_key=True)
+
+class Country(db.Model):
+    __tablename__ = 'Countries'
+    country_id = db.Column(db.Integer, primary_key=True)
+    country_name = db.Column(db.String(255), nullable=False, unique=True)
+
+class MoviesCountries(db.Model):
+    __tablename__ = 'Movies_Countries'
+    movie_id = db.Column(db.Integer, db.ForeignKey('Movies.movie_id'), primary_key=True)
+    country_id = db.Column(db.Integer, db.ForeignKey('Countries.country_id'), primary_key=True)
 
 class Actor(db.Model):
     __tablename__ = 'Actors'
@@ -52,6 +62,16 @@ class MoviesCrew(db.Model):
     movie_id = db.Column(db.Integer, db.ForeignKey('Movies.movie_id'), primary_key=True)
     crew_id = db.Column(db.Integer, db.ForeignKey('Crew.crew_id'), primary_key=True)
 
+class Keyword(db.Model):
+    __tablename__ = 'Keywords'
+    keyword_id = db.Column(db.Integer, primary_key=True)
+    keyword_name = db.Column(db.String(255), nullable=False, unique=True)
+
+class MoviesKeywords(db.Model):
+    __tablename__ = 'Movies_Keywords'
+    movie_id = db.Column(db.Integer, db.ForeignKey('Movies.movie_id'), primary_key=True)
+    keyword_id = db.Column(db.Integer, db.ForeignKey('Keywords.keyword_id'), primary_key=True)
+
 class User(db.Model):
     __tablename__ = 'Users'
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -59,6 +79,7 @@ class User(db.Model):
     username = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(255), nullable=False, default='user')
+    created_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
 
 class Rating(db.Model):
     __tablename__ = 'Ratings'

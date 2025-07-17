@@ -2,7 +2,6 @@
     import { onMount } from "svelte";
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
     import Navbar from "./Navbar2.svelte";
-    import SideBar from "./SideBar.svelte";
     import TrendingMovies from "./Top5big.svelte";
     import Top15Medium from "./Top15medium.svelte";
     import Slider from "../Slider/+page.svelte";
@@ -23,9 +22,6 @@
     <div class="wrapper">
         <div class="navbar-wrapper">
             <Navbar/>
-        </div>
-        <div class = "sidebar-wrapper">
-            <SideBar bind:open={sidebar} />
         </div>
         <!-- Movies Section -->
         <div class="movies-wrapper">
@@ -55,7 +51,7 @@
         position: relative;
         min-height: 100vh;
         overflow: hidden;
-        background-color: #000000
+        background-color: #000000;
     }
 
     .navbar-wrapper {
@@ -64,13 +60,6 @@
         left: 0;
         width: 100%;
         z-index: 10;
-    }
-
-    .sidebar-wrapper {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
     }
     
     .movies-wrapper {

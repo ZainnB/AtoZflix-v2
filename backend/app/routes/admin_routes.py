@@ -1,9 +1,9 @@
-from app.models.models import User, Movie, Genre, Actor, Crew, MoviesGenres, MoviesActors, MoviesCrew, Favorite, WatchLater, Rating, MovieLog, UserLog
+from app.models.models import User, Movie, Genre, Actor, Crew, MoviesGenres, MoviesActors, MoviesCrew, MoviesKeywords, Favorite, WatchLater, Rating, MovieLog, UserLog
 from app import db
 from flask import Blueprint, request, jsonify
 from app.utils.loggers import MovieLog_action, UserLog_action
-from app.utils.tmdb_importer import fetch_movies, fetch_movie_details, fetch_with_retry, fetch_credits, populate_movies, populate_genres, populate_actors_and_crew, get_movie_id_by_name
-
+from app.utils.tmdb_importer import fetch_movies, fetch_movie_details, fetch_with_retry, fetch_credits, populate_movies, populate_genres, populate_actors_and_crew, get_movie_id_by_name, fetch_keywords,populate_keywords
+from app.utils.helpers import hash_password
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -33,6 +33,7 @@ def add_single_movie():
         populate_movies(db.session, details)
         populate_genres(db.session, details)
         populate_actors_and_crew(db.session, credits, details['id'])
+        populate_keywords(db.session, details['id'])
 
         MovieLog_action(db.session, admin_id, 'Add', f"Added movie {details['title']} (ID: {details['id']})")
         db.session.commit()
@@ -66,6 +67,7 @@ def update_single_movie():
         populate_movies(db.session, details)  # Make sure this uses ORM to update or add
         populate_genres(db.session, details)
         populate_actors_and_crew(db.session, credits, movie_id)
+        populate_keywords(db.session, movie_id)
 
         MovieLog_action(db.session, admin_id, 'Update', f"Updated movie {details['title']} (ID: {movie_id})")
 
@@ -100,6 +102,8 @@ def delete_single_movie():
         db.session.query(Favorite).filter_by(movie_id=movie_id).delete()
         db.session.query(WatchLater).filter_by(movie_id=movie_id).delete()
         db.session.query(Rating).filter_by(movie_id=movie_id).delete()
+        db.session.query(MoviesKeywords).filter_by(movie_id=movie_id).delete()
+
 
         db.session.delete(movie)
 
@@ -132,6 +136,7 @@ def add_batch_movies():
                     populate_movies(db.session, details)
                     populate_genres(db.session, details)
                     populate_actors_and_crew(db.session, credits, movie['id'])
+                    populate_keywords(db.session, movie['id'])
 
         MovieLog_action(db.session, admin_id, 'Add', f"Added movies for {year_start}-{year_end}, pages {page_start}-{page_end}")
         db.session.commit()
@@ -165,6 +170,7 @@ def update_batch_movies():
                         populate_movies(db.session, details)
                         populate_genres(db.session, details)
                         populate_actors_and_crew(db.session, credits, movie['id'])
+                        populate_keywords(db.session, movie['id'])
                     db.session.commit()
                 except Exception as e:
                     db.session.rollback()
@@ -225,7 +231,7 @@ def delete_user():
         db.session.flush()  # Ensures user is removed before inserting log
 
         # Log the deletion
-        UserLog_action(db.session, admin_id, user_id,'Delete', f"Deleted user {user.username} (ID: {user.user_id})")
+        UserLog_action(db.session, admin_id, user_id,'Delete', f"Deleted user {user.username} (ID: {user.user_id})", old_data=old_data)
         db.session.commit()
 
         return jsonify({"message": "User deleted successfully"}), 200
@@ -317,3 +323,23 @@ def get_user_logs():
         return jsonify({"status": "success", "message": "No logs found"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@admin_bp.route('/api/register_admin', methods=['POST'])
+def register_admin():
+    try:
+        admin = User(
+            email = 'zainbaig.zb03@gmail.com',
+            username = 'zain',
+            password = hash_password('zain'),
+            role = 'admin',
+            created_at = db.func.current_timestamp()
+        )
+        # Add to DB
+        db.session.add(admin)
+        db.session.commit()
+        print("Admin added successfully.")
+        return jsonify({"message": "Admin registered successfully"}), 201
+    except Exception as e:  
+        db.session.rollback()
+        print(f"Error adding admin: {e}")
+        return jsonify({"error": "Failed to register admin"}), 500

@@ -2,7 +2,6 @@
     import { onMount } from "svelte";
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
     import Navbar from "../Home/Navbar2.svelte";
-    import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
     import RatingModal from "../RatingModal/RatingModal.svelte";
@@ -11,7 +10,6 @@
     let movie_id;
     let movie = null;
     let error = null;
-    let sidebar = false;
     let isFavourite = false; // Tracks if movie is in favourites
     let isInWatchlist = false; // Tracks if movie is in watchlist
     let user_id;
@@ -111,9 +109,6 @@
     <div class="navbar-wrapper">
         <Navbar />
     </div>
-    <div class="sidebar-wrapper">
-        <SideBar bind:open={sidebar} />
-    </div>
     {#if error}
         <p class="error">{error}</p>
     {:else if movie}
@@ -184,13 +179,6 @@
         left: 0;
         width: 100%;
         z-index: 10;
-    }
-
-    .sidebar-wrapper {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
     }
 
     .movie-header {
