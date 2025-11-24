@@ -4,8 +4,12 @@ from app import db
 from app.models.models import Movie, Genre, MoviesGenres, Actor, MoviesActors, Crew, MoviesCrew, Country, MoviesCountries, Keyword, MoviesKeywords
 import time
 from flask import Blueprint, request, jsonify
+import os
+from dotenv import load_dotenv
 
-API_KEY = 'ddfbd71a6d0caa560e3a1f793b91aa5f'
+load_dotenv()
+
+API_KEY = os.getenv("TMDB_API_KEY")
 BASE_URL = "https://api.themoviedb.org/3"
 
 def fetch_with_retry(url, params, retries=3, backoff_factor=1):

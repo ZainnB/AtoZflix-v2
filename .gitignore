@@ -1,0 +1,10 @@
+.env
+
+# Ignore dataset folder
+movid_lens_data/
+
+__pycache__/
+*.pyc
+
+venv/
+.env/
