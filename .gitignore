@@ -1,10 +1,15 @@
+# Environment files
 .env
 
-# Ignore dataset folder
-movid_lens_data/
+# Dataset folder
+movie_lens_data/
 
+# db files
+*.db
+
+# Python cache
 __pycache__/
 *.pyc
 
+# Virtual env
 venv/
-.env/
