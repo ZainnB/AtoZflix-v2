@@ -2,6 +2,7 @@
 <script>
   import { onMount } from "svelte";
   import MovieCard from "./movie_card.svelte";
+  import { api as apiClient } from '../../../lib/api.js';
   export let api;
   export let limit;
   export let heading;
@@ -9,14 +10,7 @@
   let currentIndex = 0;
   onMount(async () => {
     try {
-      const response = await fetch(
-        `http://127.0.0.1:5000/api/${api}?limit=${limit}`,
-      );
-      if (!response.ok) {
-        console.error("Failed to fetch latest movies:", response.status);
-        return;
-      }
-      const data = await response.json();
+      const data = await apiClient.get(`/api/${api}?limit=${limit}`);
       movies = data.movies || [];
     } catch (error) {
       console.error("Error fetching latest movies:", error);

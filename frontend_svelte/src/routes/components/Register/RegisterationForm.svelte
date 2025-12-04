@@ -1,5 +1,7 @@
 <script>
-    import { goto } from "$app/navigation";
+  import { goto } from "$app/navigation";
+  import { api } from '../../../lib/api.js';
+  import { storeAuth } from '../../../utils/auth.js';
 
   let email = "";
   let username = "";
@@ -12,26 +14,25 @@
     successMessage = "";
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, username, password }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        successMessage = result.message;
+      const result = await api.post('/api/register', { email, username, password });
+      
+      if (result.success && result.access_token) {
+        successMessage = result.message || "Registration successful!";
+        // Store tokens and user data
+        storeAuth(result.access_token, result.refresh_token, {
+          user_id: result.user_id,
+          role: result.role,
+          username: username
+        });
+        
         setTimeout(() => {
-          window.location.href = "./Home"
+          window.location.href = "./Home";
         }, 1000); 
       } else {
-        const error = await response.json();
-        errorMessage = error.message || "Registration failed.";
+        errorMessage = result.message || "Registration failed.";
       }
     } catch (error) {
-      errorMessage = "An error occurred: " + error.message;
+      errorMessage = error.message || "An error occurred during registration.";
     }
   };
 </script>

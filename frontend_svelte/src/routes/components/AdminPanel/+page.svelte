@@ -1,4 +1,11 @@
 <script>
+    import { onMount } from 'svelte';
+    import { requireAdmin } from '../../../utils/auth.js';
+
+    onMount(() => {
+        requireAdmin();
+    });
+
     const NavigateToUserAdminPanel=()=>{
         window.location.href="./UserAdminPanel"
     }

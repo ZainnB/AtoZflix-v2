@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import MovieCard from "./movie_card.svelte";
     import { page } from "$app/stores";
+    import { api } from '../../../lib/api.js';
   
     let movies = [];
     let type = ""; // API type, e.g., "latest" or "top_rated"
@@ -32,19 +33,13 @@
     async function fetchMovies() {
       try {
         const offset = (pageNumber - 1) * limit;
-        const response = await fetch(`http://127.0.0.1:5000/api/${type}?limit=${limit}&offset=${offset}`);
-        if (!response.ok) {
-          console.error(`Failed to fetch movies: ${response.status}`);
-          error = "Failed to fetch movies.";
-          return;
-        }
-        const data = await response.json();
+        const data = await api.get(`/api/${type}?limit=${limit}&offset=${offset}`);
         movies = data.movies || [];
         totalMovies = data.total_movies || 0;  // Total movies from the backend
         totalPages = Math.ceil(totalMovies / limit);  // Calculate total pages
-      } catch (error) {
-        console.error("Error fetching movies:", error);
-        error = "Error fetching movies.";
+      } catch (err) {
+        console.error("Error fetching movies:", err);
+        error = err.message || "Error fetching movies.";
       }
     }
   

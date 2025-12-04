@@ -4,21 +4,12 @@
     let movies = [];
     let currentIndex = 0;
 
+    import { api } from '../../../lib/api.js';
+    
     onMount(async () => {
         try {
-            const response = await fetch(
-                "http://127.0.0.1:5000/api/trending?limit=20",
-            );
-            if (!response.ok) {
-                console.error(
-                    "Failed to fetch trending movies:",
-                    response.status,
-                );
-                return;
-            }
-
-            const data = await response.json();
-            movies = data.movies.slice(5);
+            const data = await api.get("/api/trending?limit=20");
+            movies = data.movies ? data.movies.slice(5) : [];
             console.log("Movies fetched successfully:", movies);
 
             // Start the slider functionality
@@ -42,7 +33,6 @@
         setInterval(() => {
             slideNext();
         }, 9000);
-        s;
     }
 </script>
 

@@ -6,6 +6,7 @@
     import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
+    import { api } from '../../../lib/api.js';
   
     let query = "";
     let movies = [];
@@ -18,18 +19,13 @@
       const urlParams = new URLSearchParams(window.location.search);
       query = urlParams.get("query");
   
+      
       if (query) {
         try {
-          const response = await fetch(`http://localhost:5000/api/search_movie?query=${encodeURIComponent(query)}&limit=10`);
-          const data = await response.json();
-  
-          if (response.ok) {
-            movies = data.movies;
-          } else {
-            error = data.error || "Failed to fetch movies.";
-          }
+          const data = await api.get(`/api/search_movie?query=${encodeURIComponent(query)}&limit=10`);
+          movies = data.movies || [];
         } catch (err) {
-          error = "An error occurred while fetching movies.";
+          error = err.message || "An error occurred while fetching movies.";
           console.error(err);
         }
       }

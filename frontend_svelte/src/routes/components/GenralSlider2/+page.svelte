@@ -10,18 +10,15 @@
     let movies = [];      
     let currentIndex = 0; 
     
+    import { api } from '../../../lib/api.js';
+    
     // On component mount, fetch movies from the API
     onMount(async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/${api_name}?${type}_id=${value}&limit=${limit}`);
-        if (!response.ok) {
-          console.error("Failed to fetch actor movies:", response.status);
-          return;
-        }
-        const data = await response.json();
+        const data = await api.get(`/api/${api_name}?${type}_id=${value}&limit=${limit}`);
         movies = data.data || [];
       } catch (error) {
-        console.error("Error fetching actor movies:", error);
+        console.error("Error fetching movies:", error);
       }
     });
     

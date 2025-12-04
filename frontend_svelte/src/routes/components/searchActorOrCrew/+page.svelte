@@ -6,6 +6,7 @@
     import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
+    import { api } from '../../../lib/api.js';
   
     let type = "";
     let query = "";
@@ -21,29 +22,24 @@
         query = urlParams.get("query"); // Assign to existing `let query`
         type = urlParams.get("type");  // Assign to existing `let type`
         id = urlParams.get("id");      // Assign to the new `let id`
+        
         try {
-            let response;
+            let data;
             if (query) {
                 // Name-based search
-                response = await fetch(`http://localhost:5000/api/search_${type}?query=${encodeURIComponent(query)}&limit=10`);
+                data = await api.get(`/api/search_${type}?query=${encodeURIComponent(query)}&limit=10`);
             } else if (id) {
                 // ID-based search
-                response = await fetch(`http://localhost:5000/api/search_${type}?${type}_id=${encodeURIComponent(id)}&limit=10`);
+                data = await api.get(`/api/search_${type}?${type}_id=${encodeURIComponent(id)}&limit=10`);
             } else {
                 error = "No valid search parameters provided.";
                 return;
             }
 
-            if (!response.ok) {
-                error = "Failed to fetch movies.";
-                return;
-            }
-
-            const data = await response.json();
             movies = data.movies || [];
             } catch (err) {
               console.error("Error fetching movies:", err);
-              error = "An error occurred while fetching movies.";
+              error = err.message || "An error occurred while fetching movies.";
             } 
     });
   </script>

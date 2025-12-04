@@ -1,40 +1,40 @@
 <script>
+  import { api } from '../../../lib/api.js';
+  import { storeAuth } from '../../../utils/auth.js';
+  
   export let onClose; // Function to close the form
   let usernameOrEmail = ""; // Variable to hold username or email
   let password = "";
   let errorMessage = "";
 
   const handleSignIn = async () => {
-      console.log("Username or Email:", usernameOrEmail); // Debug input values
-      console.log("Password:", password);
+      errorMessage = "";
+      
+      try {
+          const data = await api.post('/api/signin', {
+              username: usernameOrEmail,
+              password: password
+          });
 
-      const response = await fetch("http://127.0.0.1:5000/api/signin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: usernameOrEmail, password }),
-      });
+          if (data.success && data.access_token) {
+              // Store tokens and user data
+              storeAuth(data.access_token, data.refresh_token, {
+                  user_id: data.user_id,
+                  role: data.role,
+                  username: usernameOrEmail
+              });
 
-      const data = await response.json();
-
-      if (data.success) {
-          // Save user data to localStorage
-          localStorage.setItem(
-              "user",
-              JSON.stringify({
-                  userId: data.user_id,
-                  username: usernameOrEmail,
-                  role: data.role, // Save role
-              })
-          );
-
-          // Redirect based on role
-          if (data.role === "admin") {
-              window.location.href = "./AdminPanel";
+              // Redirect based on role
+              if (data.role === "admin") {
+                  window.location.href = "./AdminPanel";
+              } else {
+                  window.location.href = "./Home";
+              }
           } else {
-              window.location.href = "./Home";
+              errorMessage = data.message || "Invalid credentials! Please try again.";
           }
-      } else {
-          errorMessage = data.message || "Invalid credentials! Sign-Up failed. Try Again.";
+      } catch (error) {
+          errorMessage = error.message || "Invalid credentials! Please try again.";
       }
   };
 </script>

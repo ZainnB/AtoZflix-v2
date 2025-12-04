@@ -1,14 +1,40 @@
 from flask_cors import CORS
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 db=SQLAlchemy()
+
 def create_app():
     app=Flask(__name__)
-    CORS(app)
-    app.config['SQLALCHEMY_DATABASE_URI']='sqlite:///movies.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
+    
+    # Load configuration from environment variables
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///movies.db')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # CORS configuration
+    cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+    CORS(app, origins=cors_origins, supports_credentials=True)
+    
+    # Initialize extensions
     db.init_app(app)
+    
+    # Rate limiting (must be initialized after app is created)
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"]
+    )
+    
+    # Make limiter available to routes via app context
+    app.limiter = limiter
 
     from app.routes.main_routes import main
     app.register_blueprint(main)

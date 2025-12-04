@@ -11,16 +11,12 @@
     const limit = 10;
     let searchQuery = "";
 
+    import { api } from '../../../lib/api.js';
+    
     onMount(async () => {
       redirectToRegisterIfNotAuthenticated();
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/top-crew?limit=${limit}`);
-        if (!response.ok) {
-          console.error("Failed to fetch top crew:", response.status);
-          return;
-        }
-
-        const data = await response.json();
+        const data = await api.get(`/api/top-crew?limit=${limit}`);
         if (data.status === "success") {
           topCrew = data.data || [];
         } else {

@@ -1,19 +1,22 @@
 from app.models.models import User, Movie, Genre, Actor, Crew, MoviesGenres, MoviesActors, MoviesCrew, MoviesKeywords, Favorite, WatchLater, Rating, MovieLog, UserLog
 from app import db
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.utils.loggers import MovieLog_action, UserLog_action
 from app.utils.tmdb_importer import fetch_movies, fetch_movie_details, fetch_with_retry, fetch_credits, populate_movies, populate_genres, populate_actors_and_crew, get_movie_id_by_name, fetch_keywords,populate_keywords
-from app.utils.helpers import hash_password
+from app.utils.decorators import admin_required, token_required
+import os
 
 admin_bp = Blueprint('admin', __name__)
 
-# This is used to get the API key for TMDB
-API_KEY = 'ddfbd71a6d0caa560e3a1f793b91aa5f'
+# Get API key from environment variable
+API_KEY = os.getenv('TMDB_API_KEY', '')
 BASE_URL = "https://api.themoviedb.org/3"
 
 @admin_bp.route('/api/add_single_movie', methods=['POST'])
+@token_required
+@admin_required
 def add_single_movie():
-    admin_id = request.json.get('admin_id')
+    admin_id = g.current_user.get('user_id')
     movie_name = request.json.get('movie_name')
     if not movie_name:
         return jsonify({'error': 'Movie name is required'}), 400
@@ -45,8 +48,10 @@ def add_single_movie():
 
 
 @admin_bp.route('/api/update_single_movie', methods=['PUT'])
+@token_required
+@admin_required
 def update_single_movie():
-    admin_id = request.json.get('admin_id')
+    admin_id = g.current_user.get('user_id')
     movie_name = request.json.get('movie_name')
     if not movie_name:
         return jsonify({'error': 'Movie name is required'}), 400
@@ -80,8 +85,10 @@ def update_single_movie():
 
 
 @admin_bp.route('/api/delete_single_movie', methods=['DELETE'])
+@token_required
+@admin_required
 def delete_single_movie():
-    admin_id = request.json.get('admin_id')
+    admin_id = g.current_user.get('user_id')
     movie_name = request.json.get('movie_name')
     if not movie_name:
         return jsonify({'error': 'Movie name is required'}), 400
@@ -118,8 +125,10 @@ def delete_single_movie():
 
 
 @admin_bp.route('/api/add_batch_movies', methods=['POST'])
+@token_required
+@admin_required
 def add_batch_movies():
-    admin_id = request.json.get('admin_id')
+    admin_id = g.current_user.get('user_id')
     year_start = request.json.get('year_start', 2024)
     year_end = request.json.get('year_end', 2024)
     page_start = request.json.get('page_start', 1)
@@ -151,8 +160,10 @@ def add_batch_movies():
 
 
 @admin_bp.route('/api/update_batch_movies', methods=['PUT'])
+@token_required
+@admin_required
 def update_batch_movies():
-    admin_id = request.json.get('admin_id')
+    admin_id = g.current_user.get('user_id')
     year_start = request.json.get('year_start', 2024)
     year_end = request.json.get('year_end', 2024)
     page_start = request.json.get('page_start', 1)
@@ -189,6 +200,8 @@ def update_batch_movies():
 
 # Get all users
 @admin_bp.route('/api/get_all_users',methods=['GET'])
+@token_required
+@admin_required
 def get_all_users():
     try:
         users=User.query.all()
@@ -206,12 +219,14 @@ def get_all_users():
         return jsonify({'message':f'An error occured: {str(e)}'}),500
 
 @admin_bp.route('/api/delete_user', methods=['DELETE'])
+@token_required
+@admin_required
 def delete_user():
     user_id = request.args.get('user_id')
-    admin_id = request.args.get('admin_id')
+    admin_id = g.current_user.get('user_id')
     
-    if not user_id or not admin_id:
-        return jsonify({"error": "user_id and admin_id are required"}), 400
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
 
     try:
         user = db.session.query(User).filter_by(user_id=user_id).first()
@@ -242,16 +257,18 @@ def delete_user():
 
 
 @admin_bp.route('/api/update_user', methods=['PUT'])
+@token_required
+@admin_required
 def update_user():
     data = request.get_json()
     user_id = data.get('user_id')
     username = data.get('username')
     email = data.get('email')
     role = data.get('role')
-    admin_id = data.get('admin_id')
+    admin_id = g.current_user.get('user_id')
 
-    if not user_id or not username or not email or not role or not admin_id:
-        return jsonify({"error": "user_id, username, email, role, and admin_id are required"}), 400
+    if not user_id or not username or not email or not role:
+        return jsonify({"error": "user_id, username, email, and role are required"}), 400
 
     try:
         user = db.session.query(User).filter_by(user_id=user_id).first()
@@ -288,6 +305,8 @@ def update_user():
         return jsonify({"error": f"Failed to update user: {str(e)}"}), 500
 
 @admin_bp.route('/api/get_movieLogs', methods=['GET'])
+@token_required
+@admin_required
 def get_movie_logs():
     try:
         logs = db.session.query(MovieLog).all()
@@ -305,6 +324,8 @@ def get_movie_logs():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @admin_bp.route('/api/get_userLogs', methods=['GET'])
+@token_required
+@admin_required
 def get_user_logs():
 
     try:
@@ -324,22 +345,9 @@ def get_user_logs():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@admin_bp.route('/api/register_admin', methods=['POST'])
-def register_admin():
-    try:
-        admin = User(
-            email = 'zainbaig.zb03@gmail.com',
-            username = 'zain',
-            password = hash_password('zain'),
-            role = 'admin',
-            created_at = db.func.current_timestamp()
-        )
-        # Add to DB
-        db.session.add(admin)
-        db.session.commit()
-        print("Admin added successfully.")
-        return jsonify({"message": "Admin registered successfully"}), 201
-    except Exception as e:  
-        db.session.rollback()
-        print(f"Error adding admin: {e}")
-        return jsonify({"error": "Failed to register admin"}), 500
+# NOTE: Admin registration should be done manually via database or removed in production
+# This endpoint is disabled for security - admins should be created directly in the database
+# @admin_bp.route('/api/register_admin', methods=['POST'])
+# def register_admin():
+#     # This endpoint is disabled - admins must be created via database
+#     return jsonify({"error": "This endpoint is disabled for security reasons"}), 403

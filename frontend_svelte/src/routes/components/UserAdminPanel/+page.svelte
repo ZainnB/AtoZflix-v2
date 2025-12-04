@@ -1,6 +1,7 @@
 <script>
     import { onMount } from 'svelte';
-    import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
+    import { requireAdmin } from "/src/utils/auth.js";
+    import { api } from '../../../lib/api.js';
 
     let selectedOption = 'users'; // Default to 'users'
     let data = null;
@@ -10,59 +11,42 @@
     const fetchData = async () => {
         error = null;
         try {
-            const url = 'http://127.0.0.1:5000/api/get_all_users';
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error('Failed to fetch data');
-            }
-            const result = await response.json();
-            console.log(result);
-            data = result.user_list;
+            const result = await api.get('/api/get_all_users');
+            // API returns array directly, not wrapped in user_list
+            data = Array.isArray(result) ? result : result.user_list || [];
         } catch (err) {
-            error = err.message;
+            error = err.message || 'Failed to fetch data';
         }
     };
 
     const deleteUser = async (user_id) => {
+        if (!confirm('Are you sure you want to delete this user?')) {
+            return;
+        }
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/delete_user?user_id=${user_id}&admin_id=1`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete user');
-            }
-
+            await api.delete(`/api/delete_user?user_id=${user_id}`);
             fetchData();
             alert('User deleted successfully');
         } catch (err) {
-            alert(err.message);
+            alert(err.message || 'Failed to delete user');
         }
     };
 
     const updateUser = async () => {
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/update_user', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...updateUserData, admin_id: 1 }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to update user');
-            }
-
+            await api.put('/api/update_user', updateUserData);
             fetchData();
             alert('User updated successfully');
             updateUserData = { user_id: '', username: '', email: '', role: '' };
         } catch (err) {
-            alert(err.message);
+            alert(err.message || 'Failed to update user');
         }
     };
 
     onMount(() => {
-        // redirectToRegisterIfNotAuthenticated();
-        fetchData();
+        if (requireAdmin()) {
+            fetchData();
+        }
     });
 </script>
 

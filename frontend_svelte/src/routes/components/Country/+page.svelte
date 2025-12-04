@@ -9,17 +9,14 @@
   let country_list = $state([]);
   let selectedCountries = $state(new Set());
 
+  import { api } from '../../../lib/api.js';
+  
   // Fetch country list on component mount
   onMount(async () => {
     redirectToRegisterIfNotAuthenticated();
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/get_country_names");
-      if (!response.ok) {
-        console.error("Failed to fetch country list");
-        return;
-      }
-      const data = await response.json();
-      country_list = data.countries;
+      const data = await api.get("/api/get_country_names");
+      country_list = data.countries || [];
     } catch (error) {
       console.error("Error fetching countries:", error);
     }

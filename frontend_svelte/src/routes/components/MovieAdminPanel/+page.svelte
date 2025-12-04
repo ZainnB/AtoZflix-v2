@@ -2,11 +2,10 @@
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
   import MovieCard from "../Slider/movie_card.svelte";
-
-  const BASE_URL = "http://localhost:5000/api";
+  import { api } from '../../../lib/api.js';
+  import { getCurrentUser } from '../../../utils/auth.js';
 
   // Admin actions form data
-  let admin_id = "";
   let movie_id = "";
   let movie_name = "";
   let year_start = 2024;
@@ -22,43 +21,28 @@
 
   let responseMessage = writable("");
 
-  // Fetch Admin ID from localStorage
-  onMount(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    admin_id = user?.userId || "";
-    if (!admin_id) {
-      console.log("No user ID found in localStorage");
-    }
-  });
-
   // API request handler
   const callApi = async (endpoint, method, body) => {
     try {
-      const res = await fetch(`${BASE_URL}/${endpoint}`, {
-        method: method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      const data = await api[method.toLowerCase()](`/api/${endpoint}`, body);
       responseMessage.set(data.message || data.error || "Action completed");
     } catch (error) {
       responseMessage.set(`Error: ${error.message}`);
     }
   };
 
-  // Admin panel actions
-  const addSingleMovie = () => callApi("add_single_movie", "POST", { admin_id, movie_name });
-  const updateSingleMovie = () => callApi("update_single_movie", "PUT", { admin_id, movie_name });
-  const deleteSingleMovie = () => callApi("delete_single_movie", "DELETE", { admin_id, movie_name });
-  const addBatchMovies = () => callApi("add_batch_movies", "POST", { admin_id, year_start, year_end, page_start, page_end });
-  const updateBatchMovies = () => callApi("update_batch_movies", "PUT", { admin_id, year_start, year_end, page_start, page_end });
+  // Admin panel actions (admin_id removed, handled by JWT)
+  const addSingleMovie = () => callApi("add_single_movie", "post", { movie_name });
+  const updateSingleMovie = () => callApi("update_single_movie", "put", { movie_name });
+  const deleteSingleMovie = () => callApi("delete_single_movie", "delete", { movie_name });
+  const addBatchMovies = () => callApi("add_batch_movies", "post", { year_start, year_end, page_start, page_end });
+  const updateBatchMovies = () => callApi("update_batch_movies", "put", { year_start, year_end, page_start, page_end });
 
   // Search functionality
   const searchMovies = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/search_movie?query=${encodeURIComponent(query)}&limit=10`);
-      const data = await res.json();
-      if (res.ok) {
+      const data = await api.get(`/api/search_movie?query=${encodeURIComponent(query)}&limit=10`);
+      if (data.movies) {
         movies = data.movies;
         searchError = "";
       } else {

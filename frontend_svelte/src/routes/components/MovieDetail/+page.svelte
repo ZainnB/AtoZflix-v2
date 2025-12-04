@@ -1,10 +1,11 @@
 <script>
     import { onMount } from "svelte";
-    import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
+    import { redirectToRegisterIfNotAuthenticated, getCurrentUser } from "/src/utils/auth.js";
     import Navbar from "../Home/Navbar2.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
     import RatingModal from "../RatingModal/RatingModal.svelte";
+    import { api } from '../../../lib/api.js';
 
     let isRatingOpen = false; // Controls modal visibility
     let movie_id;
@@ -16,7 +17,8 @@
 
     onMount(async () => {
         redirectToRegisterIfNotAuthenticated();
-        user_id = JSON.parse(localStorage.getItem("user")).userId;
+        const user = getCurrentUser();
+        user_id = user?.userId;
         const params = new URLSearchParams(window.location.search);
         movie_id = params.get("movie_id");
 
@@ -27,32 +29,28 @@
 
         // Fetch movie details
         try {
-            const response = await fetch(
-                `http://127.0.0.1:5000/api/movie_details?movie_id=${movie_id}`
-            );
-            if (!response.ok) throw new Error("Failed to fetch movie details");
-            const data = await response.json();
+            const data = await api.get(`/api/movie_details?movie_id=${movie_id}`);
             movie = data.movie;
 
             // Check if movie is already in user's favourites
-            const favResponse = await fetch(
-                `http://127.0.0.1:5000/api/check_favourite?user_id=${user_id}&movie_id=${movie_id}`
-            );
-            if (favResponse.ok) {
-                const favData = await favResponse.json();
-                isFavourite = favData.is_favourite;
-            }
+            if (user_id) {
+                try {
+                    const favData = await api.get(`/api/check_favourite?user_id=${user_id}&movie_id=${movie_id}`);
+                    isFavourite = favData.is_favourite;
+                } catch (e) {
+                    isFavourite = false;
+                }
 
-            // Check if movie is in user's watchlist
-            const watchlistResponse = await fetch(
-                `http://127.0.0.1:5000/api/check_watchlist?user_id=${user_id}&movie_id=${movie_id}`
-            );
-            if (watchlistResponse.ok) {
-                const watchlistData = await watchlistResponse.json();
-                isInWatchlist = watchlistData.is_in_watchlist;
+                // Check if movie is in user's watchlist
+                try {
+                    const watchlistData = await api.get(`/api/check_watchlist?user_id=${user_id}&movie_id=${movie_id}`);
+                    isInWatchlist = watchlistData.is_in_watchlist;
+                } catch (e) {
+                    isInWatchlist = false;
+                }
             }
         } catch (err) {
-            error = err.message;
+            error = err.message || "Failed to fetch movie details";
         }
     });
 
@@ -61,43 +59,28 @@
     };
 
     const toggleFavourite = async () => {
-        const url = isFavourite
-            ? `http://127.0.0.1:5000/api/remove_favourite`
-            : `http://127.0.0.1:5000/api/add_favourite`;
-            console.log(user_id,movie_id)
-            const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id, movie_id }),
-        });
-
-        if (response.ok) {
-            isFavourite = !isFavourite; // Toggle the favourite status
-        } else {
-            console.error("Failed to update favourite status");
+        try {
+            if (isFavourite) {
+                await api.post("/api/remove_favourite", { movie_id });
+            } else {
+                await api.post("/api/add_favourite", { movie_id });
+            }
+            isFavourite = !isFavourite;
+        } catch (error) {
+            console.error("Failed to update favourite status:", error);
         }
     };
 
     const toggleWatchlist = async () => {
-        console.log(user_id,movie_id)
-        const url = isInWatchlist
-            ? `http://127.0.0.1:5000/api/remove_from_watchlist`
-            : `http://127.0.0.1:5000/api/add_to_watchlist`;
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id, movie_id }),
-        });
-
-        if (response.ok) {
-            isInWatchlist = !isInWatchlist; // Toggle the watchlist status
-        } else {
-            console.error("Failed to update watchlist status");
+        try {
+            if (isInWatchlist) {
+                await api.post("/api/remove_from_watchlist", { movie_id });
+            } else {
+                await api.post("/api/add_to_watchlist", { movie_id });
+            }
+            isInWatchlist = !isInWatchlist;
+        } catch (error) {
+            console.error("Failed to update watchlist status:", error);
         }
     };
 </script>

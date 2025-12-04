@@ -1,19 +1,23 @@
 from app.models.models import Favorite,Movie
 from app import db
 from sqlalchemy.exc import IntegrityError
-from flask import Blueprint,request,jsonify, current_app as app
+from flask import Blueprint,request,jsonify, current_app as app, g
+from app.utils.decorators import token_required, verify_user_ownership
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
 favourite_bp=Blueprint('favourite',__name__)
 
 @favourite_bp.route('/api/get_favourites', methods=['GET'])
+@token_required
+@verify_user_ownership
 def get_favourites():
-    user_id = request.args.get('user_id')
-    if not user_id or not user_id.isdigit():
-        return jsonify({"status": "error", "message": "Valid User ID is required"}), 400
-
-    user_id = int(user_id)
+    user_id = g.current_user.get('user_id')  # Get from JWT token
+    
+    # If user_id in query params, verify it matches token
+    request_user_id = request.args.get('user_id')
+    if request_user_id and int(request_user_id) != int(user_id):
+        return jsonify({"status": "error", "message": "You can only access your own favourites"}), 403
    
     try:
         favourites = (
@@ -40,16 +44,18 @@ def get_favourites():
    
 
 @favourite_bp.route('/api/add_favourite', methods=['POST'])
+@token_required
+@verify_user_ownership
 def add_to_favorites():
     try:
         data = request.get_json()
         app.logger.info(f"Received data: {data}")
 
-        user_id = data.get('user_id')
+        user_id = g.current_user.get('user_id')  # Get from JWT token
         movie_id = data.get('movie_id')
 
-        if not user_id or not movie_id:
-            return jsonify({"message": "user_id and movie_id are required"}), 400
+        if not movie_id:
+            return jsonify({"message": "movie_id is required"}), 400
 
         # Check if the favorite already exists
         existing_fav = db.session.query(Favorite).filter_by(user_id=user_id, movie_id=movie_id).first()
@@ -75,14 +81,16 @@ def add_to_favorites():
    
 
 @favourite_bp.route('/api/remove_favourite', methods=['POST'])
+@token_required
+@verify_user_ownership
 def remove_from_favorites():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        user_id = g.current_user.get('user_id')  # Get from JWT token
         movie_id = data.get('movie_id')
 
-        if not user_id or not movie_id:
-            return jsonify({"message": "user_id and movie_id are required"}), 400
+        if not movie_id:
+            return jsonify({"message": "movie_id is required"}), 400
 
         favorite = db.session.query(Favorite).filter_by(user_id=user_id, movie_id=movie_id).first()
         if favorite:
@@ -97,13 +105,20 @@ def remove_from_favorites():
         return jsonify({"success": False, "message": str(e)}), 500
  
 @favourite_bp.route('/api/check_favourite', methods=['GET'])
+@token_required
+@verify_user_ownership
 def check_favorite():
     try:
-        user_id = request.args.get('user_id')
+        user_id = g.current_user.get('user_id')  # Get from JWT token
         movie_id = request.args.get('movie_id')
+        
+        # Verify user_id from query matches token
+        request_user_id = request.args.get('user_id')
+        if request_user_id and int(request_user_id) != int(user_id):
+            return jsonify({"error": "You can only check your own favourites"}), 403
 
-        if not user_id or not movie_id:
-            return jsonify({"message": "user_id and movie_id are required"}), 400
+        if not movie_id:
+            return jsonify({"message": "movie_id is required"}), 400
 
         exists = db.session.query(Favorite).filter_by(user_id=user_id, movie_id=movie_id).first() is not None
 

@@ -1,5 +1,5 @@
 # Environment files
-.env
+.env*
 
 # Dataset folder
 movie_lens_data/

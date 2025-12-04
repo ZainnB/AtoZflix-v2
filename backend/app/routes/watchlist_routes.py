@@ -1,14 +1,21 @@
 from app import db
 from app.models.models import WatchLater,Movie
-from flask import Blueprint,request,jsonify
+from flask import Blueprint,request,jsonify, g
 from datetime import date
+from app.utils.decorators import token_required, verify_user_ownership
+
 watchlater_bp=Blueprint('watch_later',__name__)
 
 @watchlater_bp.route('/api/get_watchlist', methods=['GET'])
+@token_required
+@verify_user_ownership
 def get_watchlist():
-    user_id = request.args.get('user_id')
-    if not user_id or not user_id.isdigit():
-        return jsonify({"status": "error", "message": "Valid User ID is required"}), 400
+    user_id = g.current_user.get('user_id')  # Get from JWT token
+    
+    # If user_id in query params, verify it matches token
+    request_user_id = request.args.get('user_id')
+    if request_user_id and int(request_user_id) != int(user_id):
+        return jsonify({"status": "error", "message": "You can only access your own watchlist"}), 403
 
     try:
         watchlist = (
@@ -34,13 +41,15 @@ def get_watchlist():
 
     
 @watchlater_bp.route('/api/add_to_watchlist', methods=['POST'])
+@token_required
+@verify_user_ownership
 def add_to_watchlist():
     data = request.get_json()
-    user_id = data.get('user_id')
+    user_id = g.current_user.get('user_id')  # Get from JWT token
     movie_id = data.get('movie_id')
 
-    if not user_id or not movie_id:
-        return jsonify({"error": "user_id and movie_id are required"}), 400
+    if not movie_id:
+        return jsonify({"error": "movie_id is required"}), 400
 
     try:
         exists = db.session.query(WatchLater).filter_by(user_id=user_id, movie_id=movie_id).first()
@@ -60,13 +69,15 @@ def add_to_watchlist():
         db.session.close()
 
 @watchlater_bp.route('/api/remove_from_watchlist', methods=['POST'])
+@token_required
+@verify_user_ownership
 def remove_from_watchlist():
     data = request.get_json()
-    user_id = data.get('user_id')
+    user_id = g.current_user.get('user_id')  # Get from JWT token
     movie_id = data.get('movie_id')
 
-    if not user_id or not movie_id:
-        return jsonify({"error": "user_id and movie_id are required"}), 400
+    if not movie_id:
+        return jsonify({"error": "movie_id is required"}), 400
 
     try:
         entry = db.session.query(WatchLater).filter_by(user_id=user_id, movie_id=movie_id).first()
@@ -83,12 +94,19 @@ def remove_from_watchlist():
    
 
 @watchlater_bp.route('/api/check_watchlist', methods=['GET'])
+@token_required
+@verify_user_ownership
 def check_watchlist():
-    user_id = request.args.get('user_id')
+    user_id = g.current_user.get('user_id')  # Get from JWT token
     movie_id = request.args.get('movie_id')
+    
+    # Verify user_id from query matches token
+    request_user_id = request.args.get('user_id')
+    if request_user_id and int(request_user_id) != int(user_id):
+        return jsonify({"error": "You can only check your own watchlist"}), 403
 
-    if not user_id or not movie_id:
-        return jsonify({"error": "user_id and movie_id are required"}), 400
+    if not movie_id:
+        return jsonify({"error": "movie_id is required"}), 400
 
     try:
         exists = db.session.query(WatchLater).filter_by(user_id=user_id, movie_id=movie_id).first() is not None

@@ -1,10 +1,11 @@
 <script>
     import { onMount } from 'svelte';
-    import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
+    import { redirectToRegisterIfNotAuthenticated, getCurrentUser } from "/src/utils/auth.js";
     import Navbar from "../Home/Navbar2.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
     import MovieCard from '../Slider/movie_card.svelte';
+    import { api } from '../../../lib/api.js';
 
     let user_id = null;
     let watchlist = [];
@@ -14,16 +15,15 @@
     // Check if the user is authenticated and redirect if not
     onMount(async () => {
         redirectToRegisterIfNotAuthenticated();
-        user_id = JSON.parse(localStorage.getItem("user")).userId;
+        const user = getCurrentUser();
+        user_id = user?.userId;
 
         // Fetch watchlist details
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/get_watchlist?user_id=${user_id}`);
-            if (!response.ok) throw new Error("Failed to fetch watchlist");
-            const data = await response.json();
+            const data = await api.get(`/api/get_watchlist?user_id=${user_id}`);
             watchlist = data.watchlist || [];
         } catch (err) {
-            error = err.message;
+            error = err.message || "Failed to fetch watchlist";
         } finally {
             isLoading = false;
         }
@@ -31,12 +31,10 @@
 
     async function fetchWatchlist() {
         try {
-            const response = await fetch(`http://127.0.0.1:5000/api/get_watchlist?user_id=${user_id}`);
-            if (!response.ok) throw new Error("Failed to fetch watchlist");
-            const data = await response.json();
+            const data = await api.get(`/api/get_watchlist?user_id=${user_id}`);
             watchlist = data.watchlist || [];
         } catch (err) {
-            error = err.message;
+            error = err.message || "Failed to fetch watchlist";
         } finally {
             isLoading = false;
         }
@@ -45,16 +43,7 @@
     // Remove a movie from the watchlist
     async function removeFromWatchlist(movieId) {
         try {
-            const url = `http://127.0.0.1:5000/api/remove_from_watchlist`;
-            console.log(user_id, movieId);
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ user_id, movie_id: movieId }),
-            });
-            if (!response.ok) throw new Error("Failed to remove the movie");
+            await api.post("/api/remove_from_watchlist", { movie_id: movieId });
             await fetchWatchlist();
         } catch (e) {
             alert(e.message || 'An error occurred while removing the movie.');

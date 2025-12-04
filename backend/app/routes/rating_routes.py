@@ -1,23 +1,26 @@
 from app.models.models import Rating, Movie, User
 from app import db
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
+from app.utils.decorators import token_required, verify_user_ownership
 
 rating_bp = Blueprint('rating', __name__)
 
-# get raings for a movie from user
+# get ratings for a movie from user
 @rating_bp.route('/api/rate_movie', methods=['POST'])
+@token_required
+@verify_user_ownership
 def rate_movie():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        user_id = g.current_user.get('user_id')  # Get from JWT token
         movie_id = data.get('movie_id')
         rating = data.get('rating')
         review = data.get('review', '')
 
         # Validate input
-        if not user_id or not movie_id or rating is None:
+        if not movie_id or rating is None:
             return jsonify({"status": "error", "message": "Missing required fields"}), 400
         if not (0 <= rating <= 10):
             return jsonify({"status": "error", "message": "Rating must be between 0 and 10"}), 400
@@ -56,6 +59,7 @@ def rate_movie():
     
 
 @rating_bp.route('/api/get_all_ratings', methods=['GET'])
+@token_required
 def get_all_ratings():
     try:
         ratings = db.session.query(Rating).join(User).join(Movie).all()

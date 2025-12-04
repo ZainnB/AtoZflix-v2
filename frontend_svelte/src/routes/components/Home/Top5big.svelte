@@ -1,6 +1,8 @@
 <script>
     import { onMount } from "svelte";
     import { fly } from "svelte/transition";
+    import { api } from '../../../lib/api.js';
+    import { getCurrentUser } from '../../../utils/auth.js';
 
     let movies = $state([]);
     let currentIndex = $state(0);
@@ -11,39 +13,30 @@
 
     onMount(async () => {
         try {
-            const response = await fetch(
-                "http://127.0.0.1:5000/api/trending?limit=5",
-            );
-            if (!response.ok) {
-                console.error(
-                    "Failed to fetch trending movies:",
-                    response.status,
-                );
-                return;
-            }
+            const user = getCurrentUser();
+            user_id = user?.userId;
+            
+            const data = await api.get("/api/trending?limit=5");
+            movies = data.movies || [];
 
-            user_id = JSON.parse(localStorage.getItem("user")).userId;
-            const data = await response.json();
-            movies = data.movies;
+            // Check fav/watchlist status for each movie if authenticated
+            if (user_id) {
+                for (const movie of movies) {
+                    const movie_id = movie.movie_id;
 
-            // Check fav/watchlist status for each movie
-            for (const movie of movies) {
-                const movie_id = movie.movie_id;
+                    try {
+                        const favData = await api.get(`/api/check_favourite?user_id=${user_id}&movie_id=${movie_id}`);
+                        movie.isFavourite = favData.is_favourite;
+                    } catch (e) {
+                        movie.isFavourite = false;
+                    }
 
-                const favRes = await fetch(
-                    `http://127.0.0.1:5000/api/check_favourite?user_id=${user_id}&movie_id=${movie_id}`,
-                );
-                if (favRes.ok) {
-                    const favData = await favRes.json();
-                    movie.isFavourite = favData.is_favourite;
-                }
-
-                const wlRes = await fetch(
-                    `http://127.0.0.1:5000/api/check_watchlist?user_id=${user_id}&movie_id=${movie_id}`,
-                );
-                if (wlRes.ok) {
-                    const wlData = await wlRes.json();
-                    movie.isInWatchlist = wlData.is_in_watchlist;
+                    try {
+                        const wlData = await api.get(`/api/check_watchlist?user_id=${user_id}&movie_id=${movie_id}`);
+                        movie.isInWatchlist = wlData.is_in_watchlist;
+                    } catch (e) {
+                        movie.isInWatchlist = false;
+                    }
                 }
             }
 
@@ -93,21 +86,16 @@
         const movie = movies[currentIndex];
         const movie_id = movie.movie_id;
 
-        const url = movie.isFavourite
-            ? `http://127.0.0.1:5000/api/remove_favourite`
-            : `http://127.0.0.1:5000/api/add_favourite`;
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id, movie_id }),
-        });
-
-        if (response.ok) {
+        try {
+            if (movie.isFavourite) {
+                await api.post("/api/remove_favourite", { movie_id });
+            } else {
+                await api.post("/api/add_favourite", { movie_id });
+            }
             movie.isFavourite = !movie.isFavourite;
             movies = [...movies];
-        } else {
-            console.error("Failed to update favourite status");
+        } catch (error) {
+            console.error("Failed to update favourite status:", error);
         }
     };
 
@@ -115,21 +103,16 @@
         const movie = movies[currentIndex];
         const movie_id = movie.movie_id;
 
-        const url = movie.isInWatchlist
-            ? `http://127.0.0.1:5000/api/remove_from_watchlist`
-            : `http://127.0.0.1:5000/api/add_to_watchlist`;
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id, movie_id }),
-        });
-
-        if (response.ok) {
+        try {
+            if (movie.isInWatchlist) {
+                await api.post("/api/remove_from_watchlist", { movie_id });
+            } else {
+                await api.post("/api/add_to_watchlist", { movie_id });
+            }
             movie.isInWatchlist = !movie.isInWatchlist;
             movies = [...movies];
-        } else {
-            console.error("Failed to update watchlist status");
+        } catch (error) {
+            console.error("Failed to update watchlist status:", error);
         }
     };
 </script>

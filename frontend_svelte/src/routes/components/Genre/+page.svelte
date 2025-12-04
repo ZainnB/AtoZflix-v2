@@ -9,17 +9,14 @@
   let genre_list = $state([]);
   let selectedGenres = $state(new Set());
 
+  import { api } from '../../../lib/api.js';
+  
   // Fetch genre list on component mount
   onMount(async () => {
     redirectToRegisterIfNotAuthenticated();
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/get_genre_names");
-      if (!response.ok) {
-        console.error("Failed to fetch genre list");
-        return;
-      }
-      const data = await response.json();
-      genre_list = data.genres;
+      const data = await api.get("/api/get_genre_names");
+      genre_list = data.genres || [];
     } catch (error) {
       console.error("Error fetching genres:", error);
     }
