@@ -4,11 +4,12 @@
   import FAQ from "./FAQ.svelte";
   import Footer from "./Footer1.svelte";
   import Line from "./Line.svelte";
-  import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
+  import { redirectToHomeIfAuthenticated } from "/src/utils/auth.js";
   import { onMount } from "svelte";
 
   onMount(async () => {
-    redirectToRegisterIfNotAuthenticated();
+    // Redirect to home if already authenticated (prevent logged-in users from seeing register page)
+    redirectToHomeIfAuthenticated();
   });
   const faqQuestions = [
     {

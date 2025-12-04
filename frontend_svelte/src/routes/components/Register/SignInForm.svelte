@@ -1,4 +1,5 @@
 <script>
+  import { goto } from "$app/navigation";
   import { api } from '../../../lib/api.js';
   import { storeAuth } from '../../../utils/auth.js';
   
@@ -6,9 +7,13 @@
   let usernameOrEmail = ""; // Variable to hold username or email
   let password = "";
   let errorMessage = "";
+  let isSubmitting = false;
 
   const handleSignIn = async () => {
+      if (isSubmitting) return; // Prevent double submission
+      
       errorMessage = "";
+      isSubmitting = true;
       
       try {
           const data = await api.post('/api/signin', {
@@ -24,17 +29,19 @@
                   username: usernameOrEmail
               });
 
-              // Redirect based on role
+              // Use SvelteKit's goto for better SPA navigation
               if (data.role === "admin") {
-                  window.location.href = "./AdminPanel";
+                  goto("/components/AdminPanel");
               } else {
-                  window.location.href = "./Home";
+                  goto("/components/Home");
               }
           } else {
               errorMessage = data.message || "Invalid credentials! Please try again.";
+              isSubmitting = false;
           }
       } catch (error) {
           errorMessage = error.message || "Invalid credentials! Please try again.";
+          isSubmitting = false;
       }
   };
 </script>

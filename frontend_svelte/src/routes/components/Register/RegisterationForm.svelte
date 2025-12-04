@@ -2,16 +2,21 @@
   import { goto } from "$app/navigation";
   import { api } from '../../../lib/api.js';
   import { storeAuth } from '../../../utils/auth.js';
+  import { onMount } from 'svelte';
 
   let email = "";
   let username = "";
   let password = "";
   let errorMessage = "";
   let successMessage = "";
+  let isSubmitting = false;
 
   const submitForm = async () => {
+    if (isSubmitting) return; // Prevent double submission
+    
     errorMessage = "";
     successMessage = "";
+    isSubmitting = true;
 
     try {
       const result = await api.post('/api/register', { email, username, password });
@@ -25,14 +30,21 @@
           username: username
         });
         
+        // Use SvelteKit's goto instead of window.location for better SPA navigation
         setTimeout(() => {
-          window.location.href = "./Home";
+          if (result.role === "admin") {
+            goto("/components/AdminPanel");
+          } else {
+            goto("/components/Home");
+          }
         }, 1000); 
       } else {
         errorMessage = result.message || "Registration failed.";
+        isSubmitting = false;
       }
     } catch (error) {
       errorMessage = error.message || "An error occurred during registration.";
+      isSubmitting = false;
     }
   };
 </script>

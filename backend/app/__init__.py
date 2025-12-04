@@ -9,16 +9,29 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-db=SQLAlchemy()
+db = SQLAlchemy()
 
 def create_app():
-    app=Flask(__name__)
+    app = Flask(__name__)
     
     # Load configuration from environment variables
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///movies.db')
+
+    # Normalize DATABASE_URL (Railway might provide mysql://)
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///movies.db')
+    if database_url and database_url.startswith("mysql://"):
+        # SQLAlchemy needs driver prefix
+        database_url = database_url.replace("mysql://", "mysql+pymysql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
+    # Recommended engine options for pooled connections / cloud DBs
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "pool_size": int(os.getenv('DB_POOL_SIZE', 10)),
+        "pool_recycle": int(os.getenv('DB_POOL_RECYCLE', 3600)),
+        "pool_pre_ping": True
+    }
+
     # CORS configuration
     cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
     CORS(app, origins=cors_origins, supports_credentials=True)
@@ -36,6 +49,7 @@ def create_app():
     # Make limiter available to routes via app context
     app.limiter = limiter
 
+    # Register blueprints
     from app.routes.main_routes import main
     app.register_blueprint(main)
     from app.routes.user_routes import user_bp
@@ -54,11 +68,9 @@ def create_app():
     app.register_blueprint(crew_bp)
     from app.routes.rating_routes import rating_bp
     app.register_blueprint(rating_bp)
-
     from app.routes.favoruite_routes import favourite_bp
     app.register_blueprint(favourite_bp)
     from app.routes.watchlist_routes import watchlater_bp
     app.register_blueprint(watchlater_bp)
-    #from app.routes.recommendation_routes import recommendation
-    #app.register_blueprint(recommendation,url_prefix='/api')
+
     return app

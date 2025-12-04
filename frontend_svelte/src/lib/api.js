@@ -1,27 +1,14 @@
-/**
- * Centralized API client with automatic JWT token injection
- * Handles token refresh, error handling, and request/response interceptors
- */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-/**
- * Get access token from localStorage
- */
 function getAccessToken() {
   return localStorage.getItem('access_token');
 }
 
-/**
- * Get refresh token from localStorage
- */
 function getRefreshToken() {
   return localStorage.getItem('refresh_token');
 }
 
-/**
- * Store tokens in localStorage
- */
 function storeTokens(accessToken, refreshToken) {
   localStorage.setItem('access_token', accessToken);
   if (refreshToken) {
@@ -29,48 +16,71 @@ function storeTokens(accessToken, refreshToken) {
   }
 }
 
-/**
- * Clear all auth tokens
- */
+
 function clearAuth() {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
 }
 
+// Track if we're currently refreshing to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let refreshPromise = null;
+
 /**
  * Refresh access token using refresh token
  */
 async function refreshAccessToken() {
+  // If already refreshing, return the existing promise
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
   const refreshToken = getRefreshToken();
   if (!refreshToken) {
+    clearAuth();
+    // Only redirect if not already on register page
+    if (!window.location.pathname.includes('/Register')) {
+      window.location.href = '/components/Register';
+    }
     throw new Error('No refresh token available');
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
 
-    if (!response.ok) {
-      throw new Error('Token refresh failed');
-    }
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
 
-    const data = await response.json();
-    if (data.access_token) {
-      localStorage.setItem('access_token', data.access_token);
-      return data.access_token;
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        return data.access_token;
+      }
+      throw new Error('Invalid refresh response');
+    } catch (error) {
+      clearAuth();
+      // Only redirect if not already on register page
+      if (!window.location.pathname.includes('/Register')) {
+        window.location.href = '/components/Register';
+      }
+      throw error;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
     }
-    throw new Error('Invalid refresh response');
-  } catch (error) {
-    clearAuth();
-    window.location.href = '/components/Register';
-    throw error;
-  }
+  })();
+
+  return refreshPromise;
 }
 
 /**
@@ -90,39 +100,61 @@ async function apiRequest(url, options = {}) {
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  // Make initial request
-  let response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers,
-  });
+  try {
+    // Make initial request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-  // If 401 and we have a refresh token, try to refresh
-  if (response.status === 401 && getRefreshToken()) {
-    try {
-      const newAccessToken = await refreshAccessToken();
-      // Retry request with new token
-      headers['Authorization'] = `Bearer ${newAccessToken}`;
-      response = await fetch(`${API_BASE_URL}${url}`, {
-        ...options,
-        headers,
-      });
-    } catch (error) {
-      // Refresh failed, redirect to login
-      clearAuth();
-      if (!url.includes('/signin') && !url.includes('/register')) {
-        window.location.href = '/components/Register';
+    let response = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // If 401 and we have a refresh token, try to refresh
+    if (response.status === 401 && getRefreshToken() && !url.includes('/refresh')) {
+      try {
+        const newAccessToken = await refreshAccessToken();
+        // Retry request with new token
+        headers['Authorization'] = `Bearer ${newAccessToken}`;
+        const retryController = new AbortController();
+        const retryTimeoutId = setTimeout(() => retryController.abort(), 30000);
+        
+        response = await fetch(`${API_BASE_URL}${url}`, {
+          ...options,
+          headers,
+          signal: retryController.signal,
+        });
+        
+        clearTimeout(retryTimeoutId);
+      } catch (error) {
+        // Refresh failed, only redirect if not already on auth pages
+        if (!url.includes('/signin') && !url.includes('/register') && !url.includes('/refresh')) {
+          const currentPath = window.location.pathname;
+          if (!currentPath.includes('/Register')) {
+            clearAuth();
+            window.location.href = '/components/Register';
+          }
+        }
+        throw error;
       }
-      throw error;
     }
-  }
 
-  // Handle other error statuses
-  if (!response.ok && response.status !== 401) {
-    const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-  }
+    // Handle other error statuses
+    if (!response.ok && response.status !== 401) {
+      const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
 
-  return response;
+    return response;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - please check your network connection');
+    }
+    throw error;
+  }
 }
 
 /**

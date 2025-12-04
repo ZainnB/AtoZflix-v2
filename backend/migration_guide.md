@@ -52,18 +52,27 @@ This guide covers migrating from SQLite (development) to MySQL (production) for 
 2. **Run SQL Script**
    ```sql
    -- Create database
-   CREATE DATABASE atozflix_db 
+   CREATE DATABASE IF NOT EXISTS atozflix_db 
    CHARACTER SET utf8mb4 
    COLLATE utf8mb4_unicode_ci;
    
-   -- Create user
-   CREATE USER 'atozflix_user'@'%' IDENTIFIED BY 'your_secure_password';
+   -- Create user for localhost (required for local connections)
+   CREATE USER IF NOT EXISTS 'atozflix_user'@'localhost' IDENTIFIED BY 'your_secure_password';
    
-   -- Grant privileges
+   -- Grant privileges for localhost user
+   GRANT ALL PRIVILEGES ON atozflix_db.* TO 'atozflix_user'@'localhost';
+   
+   -- Create user for remote connections (optional, if needed)
+   CREATE USER IF NOT EXISTS 'atozflix_user'@'%' IDENTIFIED BY 'your_secure_password';
+   
+   -- Grant privileges for remote user
    GRANT ALL PRIVILEGES ON atozflix_db.* TO 'atozflix_user'@'%';
    
    -- Refresh privileges
    FLUSH PRIVILEGES;
+   
+   -- Verify users were created
+   SELECT User, Host FROM mysql.user WHERE User='atozflix_user';
    ```
 
 3. **Execute Script**
@@ -136,7 +145,21 @@ sqlite3 movies.db .dump > dump.sql
    - Select target schema: `atozflix_db` (dropdown at top)
    - Execute script (⚡ button)
 
-### 5. Run Database Setup
+### 5. Test MySQL Connection (Recommended)
+
+Before running setup_db.py, test your connection:
+
+```bash
+cd backend
+python test_mysql_connection.py
+```
+
+This script will:
+- Verify your DATABASE_URL format
+- Test the connection
+- Provide detailed error messages and troubleshooting tips
+
+### 6. Run Database Setup
 
 The application uses Flask-SQLAlchemy which will create tables automatically:
 
@@ -144,6 +167,11 @@ The application uses Flask-SQLAlchemy which will create tables automatically:
 cd backend
 python setup_db.py
 ```
+
+**If you get "Access denied" error:**
+1. Run `python test_mysql_connection.py` first for detailed diagnostics
+2. Make sure you created the user for 'localhost' (not just '%')
+3. Verify the password in your .env file matches the MySQL user password
 
 **Verify in MySQL Workbench:**
 1. Refresh the schema (`atozflix_db`) in the left sidebar
@@ -157,7 +185,7 @@ python setup_db.py
    - WatchLater
    - etc.
 
-### 6. Verify Migration in MySQL Workbench
+### 7. Verify Migration in MySQL Workbench
 
 #### View All Tables:
 1. In MySQL Workbench, select `atozflix_db` schema
@@ -228,10 +256,56 @@ heroku config:get JAWSDB_URL
 
 ### Connection Issues
 
-**Error: "Access denied for user"**
-- Verify username and password in connection string
-- Check user has proper host permissions (`@'%'` or specific host)
-- Verify user privileges on the database
+**Error: "Access denied for user" (Error 1045)**
+
+This is the most common issue! MySQL treats `'user'@'localhost'` and `'user'@'%'` as different users.
+
+**Solution Steps:**
+
+1. **Check if user exists:**
+   ```sql
+   SELECT User, Host FROM mysql.user WHERE User='atozflix_user';
+   ```
+   
+2. **If user doesn't exist for 'localhost', create it:**
+   ```sql
+   CREATE USER 'atozflix_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+   GRANT ALL PRIVILEGES ON atozflix_db.* TO 'atozflix_user'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+3. **Verify password is correct:**
+   - Check your `.env` file: `DATABASE_URL=mysql+pymysql://atozflix_user:password@localhost:3306/atozflix_db`
+   - The password after the colon (`:`) must match what you set in MySQL
+
+4. **Check user has correct privileges:**
+   ```sql
+   SHOW GRANTS FOR 'atozflix_user'@'localhost';
+   ```
+
+5. **If password is wrong, reset it:**
+   ```sql
+   ALTER USER 'atozflix_user'@'localhost' IDENTIFIED BY 'new_password';
+   FLUSH PRIVILEGES;
+   ```
+   Then update your `.env` file with the new password.
+
+**Quick Fix Script for MySQL Workbench:**
+```sql
+-- Drop existing user if needed (optional)
+DROP USER IF EXISTS 'atozflix_user'@'localhost';
+DROP USER IF EXISTS 'atozflix_user'@'%';
+
+-- Recreate for localhost
+CREATE USER 'atozflix_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON atozflix_db.* TO 'atozflix_user'@'localhost';
+
+-- Create for remote connections (optional)
+CREATE USER 'atozflix_user'@'%' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON atozflix_db.* TO 'atozflix_user'@'%';
+
+FLUSH PRIVILEGES;
+```
 
 **Error: "Can't connect to MySQL server"**
 - Check MySQL server is running
