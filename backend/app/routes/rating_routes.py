@@ -2,7 +2,7 @@ from app.models.models import Rating, Movie, User
 from app import db
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy import func, desc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.utils.decorators import token_required, verify_user_ownership
 
 rating_bp = Blueprint('rating', __name__)
@@ -32,10 +32,12 @@ def rate_movie():
             # Update existing rating
             existing_rating.rating = rating
             existing_rating.review = review
+            existing_rating.rated_at = date.today()
             message = "Rating updated successfully"
         else:
             # Create new rating
-            new_rating = Rating(user_id=user_id, movie_id=movie_id, rating=rating, review=review)
+            new_rating = Rating(user_id=user_id, movie_id=movie_id, rating=rating,
+                                review=review, rated_at=date.today())
             db.session.add(new_rating)
             message = "Rating added successfully"
 

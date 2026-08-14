@@ -1,264 +1,286 @@
-<script lang="ts">
+<script>
   import { onMount } from "svelte";
-  interface Props {
-    logo?: string;
-  }
+  import { clearAuth } from "../../../lib/api.js";
 
-  let { logo = "/assets/img/logo.png" }: Props = $props();
+  let { logo = "/assets/img/logo.png" } = $props();
 
   let searchQuery = $state("");
+  let currentPath = $state("");
+  let menuOpen = $state(false);
 
-  let navItems = [
-    { name: "Home", link: "../components/Home" },
-    { name: "Genre", link: "../components/Genre" },
-    { name: "Actors", link: "../components/Actors" },
-    { name: "Crew", link: "../components/Crew" },
-    { name: "Country", link: "../components/Country" },
-    { name: "Favourites", link: "../components/Favourites" },
-    { name: "To Watch Later", link: "../components/ToWatchLater" },
+  const navItems = [
+    { name: "Home", link: "/components/Home" },
+    { name: "Genre", link: "/components/Genre" },
+    { name: "Actors", link: "/components/Actors" },
+    { name: "Crew", link: "/components/Crew" },
+    { name: "Country", link: "/components/Country" },
+    { name: "Favourites", link: "/components/Favourites" },
+    { name: "Watch Later", link: "/components/ToWatchLater" },
   ];
 
-  const handleSearch = async () => {
-    console.log("Search query:", searchQuery);
-    if (searchQuery.trim()) {
-      window.location.href = `/components/movieSearchResult?query=${encodeURIComponent(searchQuery)}`;
+  onMount(() => {
+    currentPath = window.location.pathname;
+  });
+
+  const handleSearch = () => {
+    const q = searchQuery.trim();
+    if (q) {
+      window.location.href = `/components/movieSearchResult?query=${encodeURIComponent(q)}`;
     }
   };
 
-  // Handle Enter key press
   const handleKeyDown = (event) => {
-    if (event.key === "Enter") {
-      handleSearch();
-    }
+    if (event.key === "Enter") handleSearch();
   };
 
   const handleLogout = () => {
-    console.log("User logged out");
-
-    // Clear all localStorage data
-    localStorage.clear();
-
-    // Optionally clear sessionStorage if you're using it
-    sessionStorage.clear();
-
-    // Redirect to login page
+    // Was localStorage.clear() + sessionStorage.clear(), which wipes any
+    // unrelated key this origin owns. clearAuth removes exactly the auth keys.
+    clearAuth();
     window.location.href = "/";
   };
 </script>
 
 <nav>
   <div class="nav-container">
-    <div class="navbar-logo">
-      <a href="../components/Home"
-        ><img src={logo || "/placeholder.svg"} alt="Logo" class="logo" /></a
-      >
-    </div>
+    <a class="navbar-logo" href="/components/Home" aria-label="AtoZflix home">
+      <img src={logo} alt="AtoZflix" class="logo" />
+    </a>
 
-    <div class="navbar-nav">
+    <button
+      class="menu-toggle"
+      onclick={() => (menuOpen = !menuOpen)}
+      aria-expanded={menuOpen}
+      aria-label="Toggle navigation"
+    >
+      <span></span><span></span><span></span>
+    </button>
+
+    <div class="navbar-nav" class:open={menuOpen}>
       {#each navItems as item}
-        <a href={item.link} class="nav-link">{item.name}</a>
+        <a
+          href={item.link}
+          class="nav-link"
+          class:active={currentPath === item.link}
+          aria-current={currentPath === item.link ? "page" : undefined}
+        >
+          {item.name}
+        </a>
       {/each}
     </div>
 
-    <div class="navbar-right">
-      <input
-        type="text"
-        class="navbar-search"
-        bind:value={searchQuery}
-        placeholder="Search Movies..."
-        onkeydown={handleKeyDown}
-      />
-      <button class="logout-btn" onclick={handleLogout}>Logout</button>
+    <div class="navbar-right" class:open={menuOpen}>
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+        </svg>
+        <input
+          type="search"
+          bind:value={searchQuery}
+          onkeydown={handleKeyDown}
+          placeholder="Search movies…"
+          aria-label="Search movies"
+        />
+      </div>
+      <button class="logout-btn" onclick={handleLogout}>Log out</button>
     </div>
   </div>
 </nav>
 
 <style>
-  /* Navbar */
   nav {
     width: 100%;
-    height: auto;
+    /* Fades into the page rather than sitting on a hard bar, so it can overlay
+       a hero backdrop without cutting it in half. */
     background: linear-gradient(
       to bottom,
-      rgba(0, 0, 0, 0.9),
-      rgba(0, 0, 0, 0.04)
+      rgba(6, 6, 9, 0.95) 0%,
+      rgba(6, 6, 9, 0.7) 55%,
+      rgba(6, 6, 9, 0) 100%
     );
-    padding: 10px 0px;
-    position: relative;
+    padding-block: 0.75rem 1.5rem;
     z-index: 10;
   }
 
+  /* Same max-width and gutter as .shell, so the logo lines up with the left
+     edge of every carousel below it. */
   .nav-container {
-    max-width: 90vw;
-    margin: auto;
+    max-width: var(--shell-max);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
-    z-index: 10;
+    gap: 1.25rem;
   }
 
   .navbar-logo {
     flex-shrink: 0;
+    display: block;
   }
 
   .logo {
-    width: 140px;
+    width: 130px;
     height: auto;
   }
 
   .navbar-nav {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    margin-left: 2rem;
+    gap: 0.15rem;
     flex-grow: 1;
+    min-width: 0;
   }
 
   .nav-link {
-    color: rgba(255, 255, 255, 0.9);
-    text-decoration: none;
-    font-size: 1.1rem;
-    font-weight: 500;
-    padding: 0.5rem 0.5rem;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
-      "Ubuntu", sans-serif;
     position: relative;
+    padding: 0.45rem 0.7rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 500;
     white-space: nowrap;
+    transition: color 0.2s var(--ease), background 0.2s var(--ease);
   }
 
   .nav-link:hover {
-    color: #098577;
-    background-color: rgba(9, 133, 119, 0.1);
-    transform: translateY(-1px);
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  .nav-link::after {
+  /* The current page is marked, which the old navbar did not do - there was no
+     way to tell where you were. */
+  .nav-link.active {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .nav-link.active::after {
     content: "";
     position: absolute;
-    bottom: -2px;
-    left: 50%;
-    width: 0;
+    left: 0.7rem;
+    right: 0.7rem;
+    bottom: 0.1rem;
     height: 2px;
-    background-color: #098577;
-    transition: all 0.3s ease;
-    transform: translateX(-50%);
+    border-radius: 2px;
+    background: var(--accent);
   }
 
-  .nav-link:hover::after {
-    width: 80%;
-  }
-
-  /* Right side container */
   .navbar-right {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 0.6rem;
     flex-shrink: 0;
   }
 
-  .navbar-search {
-    padding: 8px 15px;
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    background-color: rgba(15, 16, 20, 0.5);
-    color: white;
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: rgba(0, 0, 0, 0.45);
+    transition: border-color 0.2s var(--ease), width 0.2s var(--ease);
+  }
+
+  .search:focus-within {
+    border-color: var(--accent);
+  }
+
+  .search svg {
+    flex-shrink: 0;
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: var(--text-faint);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .search input {
+    width: 11rem;
+    border: none;
+    background: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0.25rem 0;
+    transition: width 0.25s var(--ease);
+  }
+
+  .search input:focus {
     outline: none;
-    width: 250px;
-    transition:
-      width 0.3s,
-      background-color 0.3s,
-      border-color 0.3s;
-    font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
-      "Ubuntu", sans-serif;
+    width: 14rem;
   }
 
-  .navbar-search:focus {
-    width: 300px;
-    background-color: rgba(15, 16, 20, 0.7);
-    border-color: #098577;
-  }
-
-  .navbar-search::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+  .search input::placeholder {
+    color: var(--text-faint);
   }
 
   .logout-btn {
-    background-color: #098577;
-    color: #fff;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 16px;
-    transition:
-      background-color 0.3s,
-      transform 0.2s;
-    font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
-      "Ubuntu", sans-serif;
     white-space: nowrap;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease),
+      background 0.2s var(--ease);
   }
 
   .logout-btn:hover {
-    background-color: #064e45;
-    transform: scale(1.05);
+    color: var(--text);
+    border-color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  /* Responsive Design */
-  @media (max-width: 1200px) {
-    .navbar-nav {
-      gap: 1.5rem;
-      margin-left: 2rem;
-    }
-
-    .nav-link {
-      font-size: 0.9rem;
-      padding: 0.4rem 0.8rem;
-    }
+  .menu-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0.5rem;
+    margin-left: auto;
+    border: none;
+    background: none;
+    cursor: pointer;
   }
 
-  @media (max-width: 992px) {
-    .navbar-nav {
-      gap: 1rem;
-      margin-left: 1rem;
-    }
-
-    .nav-link {
-      font-size: 0.85rem;
-      padding: 0.3rem 0.6rem;
-    }
-
-    .navbar-search {
-      width: 150px;
-    }
-
-    .navbar-search:focus {
-      width: 200px;
-    }
+  .menu-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text);
   }
 
-  @media (max-width: 768px) {
-    .nav-container {
-      max-width: 95vw;
-      padding: 0 10px;
+  /* Below this width the seven links cannot fit beside the search box, so they
+     collapse behind a toggle instead of wrapping into an unreadable pile. */
+  @media (max-width: 1100px) {
+    .menu-toggle { display: flex; }
+
+    .nav-container { flex-wrap: wrap; }
+
+    .navbar-nav,
+    .navbar-right {
+      display: none;
+      width: 100%;
     }
 
-    .navbar-nav {
-      display: none; /* Hide navigation links on mobile - you might want to implement a mobile menu */
+    .navbar-nav.open,
+    .navbar-right.open {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding-top: 0.75rem;
     }
 
-    .logo {
-      width: 100px;
-    }
-
-    .navbar-search {
-      width: 120px;
-    }
-
-    .navbar-search:focus {
-      width: 160px;
-    }
+    .search { flex: 1; }
+    .search input,
+    .search input:focus { width: 100%; }
   }
 </style>

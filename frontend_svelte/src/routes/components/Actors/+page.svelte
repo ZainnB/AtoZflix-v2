@@ -1,93 +1,117 @@
+<!--
+  Browse actors.
+
+  Rewritten from a page that rendered a full movie carousel per actor - twelve
+  simultaneous carousels, one network request each, and no way to see who the
+  actor actually was because there were no photos. It is now a portrait grid
+  that links into the actor detail page, which is where the depth belongs.
+-->
 <script>
-    import { onMount } from "svelte";
-    import GeneralSlider2 from "../GenralSlider2/+page.svelte";
-    import Navbar from "../Home/Navbar2.svelte";
-    import Footer from "../Register/Footer1.svelte";
-    import Line from "../Register/Line.svelte";
-    import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
-    
-    // State variables
-    let topActors = [];
-    const limit = 10;
-    let searchQuery = ""; // Query for searching actors
+  import { onMount } from "svelte";
+  import Navbar from "../Home/Navbar2.svelte";
+  import Footer from "../Register/Footer1.svelte";
+  import Line from "../Register/Line.svelte";
+  import PersonCard from "$lib/components/PersonCard.svelte";
+  import { api } from "../../../lib/api.js";
+  import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
 
-    import { api } from '../../../lib/api.js';
-    
-    onMount(async () => {
-      redirectToRegisterIfNotAuthenticated();
-      try {
-        const data = await api.get(`/api/top-actors?limit=${limit}`);
-        if (data.status === "success") {
-          topActors = data.data || [];
-        } else {
-          console.error("Error in fetching actors:", data.message);
-        }
-      } catch (error) {
-        console.error("Error fetching top actors:", error);
-      }
-    });
+  const LIMIT = 60;
 
-    const handleSearch = async () => {
-        console.log("Search query:", searchQuery);
-        if (searchQuery.trim()) {
-            const type = "actor";
-            window.location.href = `/components/searchActorOrCrew?type=${encodeURIComponent(type)}&query=${encodeURIComponent(searchQuery)}`;
-        }
-    };
-  
-    // Handle Enter key press
-    const handleKeyDown = (event) => {
-      if (event.key === "Enter") {
-        handleSearch();
+  let actors = [];
+  let loading = true;
+  let searchQuery = "";
+
+  onMount(async () => {
+    redirectToRegisterIfNotAuthenticated();
+    try {
+      const data = await api.get(`/api/top-actors?limit=${LIMIT}`);
+      if (data.status === "success") {
+        actors = data.data || [];
       }
-    };
+    } catch (error) {
+      console.error("Error fetching top actors:", error);
+    } finally {
+      loading = false;
+    }
+  });
+
+  function search() {
+    const q = searchQuery.trim();
+    if (!q) return;
+    window.location.href =
+      `/components/searchActorOrCrew?type=actor&query=${encodeURIComponent(q)}`;
+  }
+
+  function onKeydown(event) {
+    if (event.key === "Enter") search();
+  }
 </script>
 
-<div class="wrapper">
-  <div class="navbar-wrapper">
-      <Navbar />
-  </div>
+<svelte:head><title>Actors — AtoZflix</title></svelte:head>
 
-  <div class="content">
-    <!-- Search Bar Section -->
-    <div class="search-section">
-      <h2 class="search-heading">Search for Your Favorite Actors</h2>
-      <div class="navbar-links">
+<div class="page">
+  <div class="navbar-wrapper"><Navbar /></div>
+
+  <header class="hero">
+    <div class="shell">
+      <p class="eyebrow">Browse</p>
+      <h1>Actors</h1>
+      <p class="lede">
+        The most-featured performers in the catalog, ranked by the combined
+        rating of everything they appear in.
+      </p>
+
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+        </svg>
         <input
-          type="text"
-          class="navbar-search"
+          type="search"
           bind:value={searchQuery}
-          placeholder="Search Actors..."
-          on:keydown={handleKeyDown}
+          on:keydown={onKeydown}
+          placeholder="Search for an actor…"
+          aria-label="Search for an actor"
         />
+        <button on:click={search} disabled={!searchQuery.trim()}>Search</button>
       </div>
     </div>
+  </header>
 
-    <h1>Top Actors</h1>
-
-    {#each topActors as { actor_id, actor_name }}
-      <div class="actor-slider">
-        <h2>{actor_name}</h2>
-        <GeneralSlider2 
-          api_name="actor-movies"
-          type="actor" 
-          value={actor_id} 
-          limit={20} />
+  <section class="shell listing">
+    {#if loading}
+      <div class="grid">
+        {#each Array(18).fill(0) as _}
+          <div class="tile">
+            <div class="skeleton circle"></div>
+            <div class="skeleton bar"></div>
+          </div>
+        {/each}
       </div>
-    {/each}
-  </div>
+    {:else if actors.length}
+      <div class="grid">
+        {#each actors as actor (actor.actor_id)}
+          <PersonCard
+            actor_id={actor.actor_id}
+            name={actor.actor_name}
+            profile_path={actor.profile_path}
+          />
+        {/each}
+      </div>
+    {:else}
+      <p class="empty">No actors found.</p>
+    {/if}
+  </section>
 
   <Line />
   <Footer />
 </div>
 
 <style>
-  .wrapper {
-    position: relative;
+  .page {
     min-height: 100vh;
-    background-color: #121212;
-    font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
-    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
   }
 
   .navbar-wrapper {
@@ -98,77 +122,128 @@
     z-index: 10;
   }
 
-  .search-section {
-    text-align: center;
-    margin: 20px 0;
+  .hero {
+    padding-top: calc(var(--nav-height) + 2.5rem);
+    padding-bottom: 2rem;
+    background:
+      radial-gradient(120% 100% at 20% 0%, rgba(45, 212, 191, 0.10), transparent 60%),
+      linear-gradient(to bottom, var(--surface), var(--bg));
+    border-bottom: 1px solid var(--border);
   }
 
-  .search-heading {
-    color: #fff;
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-    font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
-  }
-
-  .navbar-links {
-    display: flex;
-    justify-content: center;
-    margin: 0 auto;
-  }
-
-  .navbar-search {
-    padding: 12px 20px;
-    border-radius: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    background-color: rgba(15, 16, 20, 0.6);
-    color: white;
-    outline: none;
-    width: 300px;
-    transition: width 0.3s, background-color 0.3s;
-    font-family: 'Netflix Sans', 'Helvetica Neue', 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
-    font-size: 1rem;
-  }
-
-  .navbar-search:focus {
-    width: 400px;
-    background-color: rgba(15, 16, 20, 0.8);
-  }
-
-  .content {
-    padding: 2rem 1rem;
-    margin-top: 70px;
-    color: #fff;
+  .eyebrow {
+    margin: 0 0 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
   }
 
   h1 {
-    font-size: 2rem;
-    text-align: left;
-    margin: 20px 0;
+    margin: 0 0 0.5rem;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
 
-  .actor-slider {
-    margin-bottom: 2rem;
-    padding: 1rem;
-    background-color: #1e1e1e;
-    border-radius: 8px;
+  .lede {
+    margin: 0 0 1.5rem;
+    max-width: 56ch;
+    color: var(--text-dim);
+    font-size: 0.98rem;
+    line-height: 1.6;
   }
 
-  h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 34rem;
+    padding: 0.35rem 0.35rem 0.35rem 0.9rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: rgba(0, 0, 0, 0.35);
+    transition: border-color 0.2s var(--ease);
   }
 
-  @media (max-width: 768px) {
-    .content {
-      padding: 1rem;
-    }
+  /* Focus lives on the wrapper so the whole control lights up, rather than an
+     outline appearing inside the pill. */
+  .search:focus-within {
+    border-color: var(--accent);
+  }
 
-    .navbar-search {
-      width: 250px;
-    }
+  .search svg {
+    flex-shrink: 0;
+    width: 1.05rem;
+    height: 1.05rem;
+    fill: none;
+    stroke: var(--text-faint);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
 
-    .navbar-search:focus {
-      width: 300px;
-    }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 0.5rem 0;
+  }
+
+  .search input:focus { outline: none; }
+  .search input::placeholder { color: var(--text-faint); }
+
+  .search button {
+    flex-shrink: 0;
+    padding: 0.55rem 1.1rem;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--accent-strong);
+    color: #06201d;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s var(--ease), opacity 0.2s var(--ease);
+  }
+
+  .search button:hover:not(:disabled) { background: var(--accent); }
+  .search button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .listing {
+    padding-block: 2.5rem 3.5rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1.6rem 1rem;
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .circle {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-pill);
+  }
+
+  .bar {
+    width: 70%;
+    height: 0.7rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .empty {
+    color: var(--text-faint);
   }
 </style>

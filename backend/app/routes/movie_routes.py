@@ -1,4 +1,4 @@
-from app.models.models import Movie,MoviesGenres,Genre,Actor,MoviesActors
+from app.models.models import Movie,MoviesGenres,Genre,Actor,MoviesActors,Country,MoviesCountries
 from sqlalchemy import func,desc
 from datetime import datetime,timedelta
 from app import db
@@ -13,14 +13,17 @@ def get_latest_movie():
     offset=request.args.get('offset',default=0,type=int)
     try:
         movies=(
-            db.session.query(Movie.poster_path,Movie.movie_id)
+            db.session.query(Movie.poster_path,Movie.movie_id,Movie.title,Movie.rating_avg)
             .order_by(Movie.release_date.desc())
             .limit(limit)
             .offset(offset)
             .all()
         )
-        print(movies)
-        formatted_movies=[{"poster_path":poster_path,"movie_id":movie_id} for poster_path,movie_id in movies]
+        formatted_movies=[
+            {"poster_path":r.poster_path,"movie_id":r.movie_id,
+             "title":r.title,"rating_avg":r.rating_avg}
+            for r in movies
+        ]
         return jsonify({'movies':formatted_movies}),200
     except Exception as e:
         return jsonify({'message':'Failed to fetch latest movies'}),500
@@ -86,18 +89,39 @@ def get_trending_movies():
 
 @movie_bp.route('/api/top_rated',methods=['GET'])
 def get_top_rated_movie():
+    """
+    Highest rated films, using the IMDb weighted-rating formula:
+
+        score = (v / (v + m)) * R + (m / (v + m)) * C
+
+    Ordering by raw average put a film with a 9.3 from a handful of votes above
+    The Shawshank Redemption. The prior pulls low-vote films toward the catalog
+    mean, so a title has to be both well rated AND widely rated to reach the top
+    - which is what "top rated" means to someone browsing.
+    """
     limit=request.args.get('limit',default=10,type=int)
     offset=request.args.get('offset',default=0,type=int)
+    MIN_VOTES = 500.0
     try:
+        mean_rating = db.session.query(func.avg(Movie.rating_avg)).scalar() or 0.0
+
+        weighted = (
+            (Movie.rating_count / (Movie.rating_count + MIN_VOTES)) * Movie.rating_avg
+            + (MIN_VOTES / (Movie.rating_count + MIN_VOTES)) * mean_rating
+        )
+
         movies=(
-            db.session.query(Movie.poster_path,Movie.movie_id)
-            .order_by(Movie.rating_avg.desc())
+            db.session.query(Movie.poster_path,Movie.movie_id,Movie.title,Movie.rating_avg)
+            .order_by(weighted.desc())
             .limit(limit)
             .offset(offset)
             .all()
         )
-        print(movies)
-        formatted_movies=[{"poster_path":poster_path,"movie_id":movie_id} for poster_path,movie_id in movies]
+        formatted_movies=[
+            {"poster_path":r.poster_path,"movie_id":r.movie_id,
+             "title":r.title,"rating_avg":r.rating_avg}
+            for r in movies
+        ]
         return jsonify({'movies':formatted_movies}),200
     except Exception as e:
         return jsonify({'message':'Failed to fetch latest movies'}),500
@@ -118,7 +142,26 @@ def movie_details():
         )
 
         if movie:
+            # Genres and countries live in junction tables, so they are fetched
+            # rather than read off the movie row. (This endpoint previously read
+            # a `production_countries` attribute that does not exist on the
+            # model, which raised AttributeError on every single call and was
+            # swallowed by the except below as a generic 500.)
+            genres = [
+                name for (name,) in db.session.query(Genre.genre_name)
+                .join(MoviesGenres, Genre.genre_id == MoviesGenres.genre_id)
+                .filter(MoviesGenres.movie_id == movie_id)
+                .all()
+            ]
+            countries = [
+                name for (name,) in db.session.query(Country.country_name)
+                .join(MoviesCountries, Country.country_id == MoviesCountries.country_id)
+                .filter(MoviesCountries.movie_id == movie_id)
+                .all()
+            ]
+
             formatted_movie = {
+                "movie_id": movie.movie_id,
                 "title": movie.title,
                 "original_title": movie.original_title,
                 "release_date": movie.release_date,
@@ -127,7 +170,8 @@ def movie_details():
                 "runtime": movie.runtime,
                 "overview": movie.overview,
                 "production_companies": movie.production_companies,
-                "production_countries": movie.production_countries,
+                "production_countries": countries,
+                "genres": genres,
                 "rating_avg": movie.rating_avg,
                 "rating_count": movie.rating_count,
                 "country": movie.country,
@@ -153,15 +197,25 @@ def search_movies():
     try:
         # Case-insensitive, partial match using ilike
         results = (
-            db.session.query(Movie.poster_path, Movie.movie_id)
+            db.session.query(
+                Movie.poster_path, Movie.movie_id, Movie.title,
+                Movie.rating_avg, Movie.release_date,
+            )
             .filter(Movie.title.ilike(f"%{search_query}%"))
+            # Rank matches by how well reviewed they are, so searching "batman"
+            # leads with the films people mean rather than an arbitrary row.
+            .order_by(Movie.rating_count.desc())
             .limit(limit)
             .all()
         )
 
         formatted_movies = [
-            {"poster_path": poster_path, "movie_id": movie_id}
-            for poster_path, movie_id in results
+            {
+                "poster_path": r.poster_path, "movie_id": r.movie_id,
+                "title": r.title, "rating_avg": r.rating_avg,
+                "release_date": r.release_date,
+            }
+            for r in results
         ]
 
         return jsonify({"movies": formatted_movies}), 200

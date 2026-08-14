@@ -19,10 +19,13 @@ def get_watchlist():
 
     try:
         watchlist = (
-            db.session.query(WatchLater.movie_id, Movie.poster_path, WatchLater.added_at)
+            db.session.query(
+                WatchLater.movie_id, Movie.poster_path, Movie.title,
+                Movie.rating_avg, Movie.release_date, WatchLater.added_at,
+            )
             .join(Movie, WatchLater.movie_id == Movie.movie_id)
             .filter(WatchLater.user_id == int(user_id))
-            .order_by(WatchLater.added_at.desc())
+            .order_by(WatchLater.added_at.is_(None), WatchLater.added_at.desc())
             .all()
         )
 
@@ -30,7 +33,10 @@ def get_watchlist():
             {
                 "movie_id": w.movie_id,
                 "poster_path": w.poster_path,
-                "added_at": w.added_at
+                "title": w.title,
+                "rating_avg": w.rating_avg,
+                "release_date": w.release_date,
+                "added_at": w.added_at,
             } for w in watchlist
         ]
 

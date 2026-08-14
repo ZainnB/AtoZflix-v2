@@ -1,37 +1,16 @@
+<!--
+  Kept as a thin re-export so the several pages already importing
+  "../Slider/movie_card.svelte" keep working unchanged. The implementation lives
+  in $lib/components/MovieCard.svelte - having one card definition is the point.
+-->
 <script>
-  export let poster_path;
+  import MovieCard from "$lib/components/MovieCard.svelte";
+
+  export let poster_path = null;
   export let movie_id;
+  export let title = "";
+  export let subtitle = "";
+  export let rating = null;
 </script>
 
-<a href={`/components/MovieDetail?movie_id=${movie_id}`} class="movie-link">
-<div class="movie-card">
-  <img src={`https://image.tmdb.org/t/p/w500${poster_path}`} alt="Movie Poster" class="movie-image" />
-</div>
-</a>
-
-<style>
-  .movie-link {
-    text-decoration: none;
-  }
-  .movie-card {
-    flex: 0 0 calc(12.5% - 10px);
-    margin: 4px;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    height: 260px;
-    width: 165px;
-  }
-
-  .movie-card:hover {
-    transform: scale(1.05);
-    box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3);
-  }
-
-  .movie-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-</style>
+<MovieCard {poster_path} {movie_id} {title} {subtitle} {rating} />

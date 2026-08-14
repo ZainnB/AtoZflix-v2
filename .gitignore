@@ -4,8 +4,17 @@
 # Dataset folder
 movie_lens_data/
 
+# MovieLens 25M raw dataset (~1.1GB, ratings.csv alone is 678MB).
+# Never commit: GitHub rejects files over 100MB. Download separately from
+# https://files.grouplens.org/datasets/movielens/ml-25m.zip
+ml-25m/
+ml-20m/
+
 # db files
 *.db
+
+# synthetic evaluation ground truth (regenerate with seed_demo_data.py)
+demo_latent.json
 
 # Python cache
 __pycache__/
@@ -13,3 +22,4 @@ __pycache__/
 
 # Virtual env
 venv/
+.netlify/

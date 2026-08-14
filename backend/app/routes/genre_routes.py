@@ -28,15 +28,21 @@ def get_movie_by_genre():
         if not genre:
             return jsonify({'error':'Genre not found'}),404
         movies =(
-            db.session.query(Movie.poster_path,Movie.movie_id)
+            db.session.query(
+                Movie.poster_path,Movie.movie_id,Movie.title,Movie.rating_avg
+            )
             .join(MoviesGenres, Movie.movie_id==MoviesGenres.movie_id)
             .filter(MoviesGenres.genre_id==genre.genre_id)
+            # Best-first, otherwise a genre shelf leads with whatever happens to
+            # sit lowest in the table.
+            .order_by(Movie.rating_avg.desc())
             .limit(limit)
             .all()
         )
         formatted_movies=[
-            {'poster_path':poster_path,'movie_id':movie_id}
-        for poster_path,movie_id in movies
+            {'poster_path':r.poster_path,'movie_id':r.movie_id,
+             'title':r.title,'rating_avg':r.rating_avg}
+            for r in movies
         ]
         return jsonify({'movies':formatted_movies}),200
     except Exception as e:

@@ -3,7 +3,6 @@
     import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
     import MovieCard from "../Slider/movie_card.svelte";
     import Navbar from "../Home/Navbar2.svelte";
-    import SideBar from "../Home/SideBar.svelte";
     import Footer from "../Register/Footer1.svelte";
     import Line from "../Register/Line.svelte";
     import { api } from '../../../lib/api.js';
@@ -11,7 +10,6 @@
     let query = "";
     let movies = [];
     let error = "";
-    let sidebar = false;
   
     // Extract query parameter on mount
     onMount(async () => {
@@ -35,10 +33,6 @@
   <div class="wrapper">
     <div class="navbar-wrapper">
       <Navbar />
-    </div>
-  
-    <div class="sidebar-wrapper">
-      <SideBar bind:open={sidebar} />
     </div>
   
     <div class="search-results-container">
@@ -79,12 +73,6 @@
       z-index: 10;
     }
   
-    .sidebar-wrapper {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-    }
   
     .search-results-container {
       display: flex;

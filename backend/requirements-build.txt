@@ -1,0 +1,16 @@
+# Build-time only. NOT needed to run the API.
+#
+# These are used by the offline data-pipeline scripts:
+#   build_similarity.py     item-item CF build (sparse matrix multiplication)
+#   eval_recommender.py     offline evaluation harness
+#
+# The web process never imports them. It reads precomputed neighbour lists out
+# of the Item_Similarity table, so the deployment image installs only
+# requirements.txt. app/utils/cf_builder.py is the module that draws that
+# boundary - nothing under app/routes/ or app/utils/recommender.py may import it.
+#
+# Install alongside the runtime deps when running the pipeline:
+#   pip install -r requirements.txt -r requirements-build.txt
+
+numpy>=1.26
+scipy>=1.11

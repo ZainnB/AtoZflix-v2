@@ -1,9 +1,15 @@
 [build]
   command = "npm run build"
-  publish = ".svelte-kit"
+  # adapter-netlify emits the deployable site to "build", not ".svelte-kit".
+  # ".svelte-kit" is Vite's intermediate working directory and publishing it
+  # would serve an unbuilt tree.
+  publish = "build"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
+# NOTE: no [[redirects]] block here.
+#
+# adapter-netlify rejects redirects declared in netlify.toml outright (it needs
+# a "_redirects" file), and the SPA-style catch-all that used to live here —
+# from "/*" to "/index.html" — was wrong for SvelteKit regardless. SvelteKit
+# does its own routing and the adapter generates the redirect rules it needs at
+# build time, including the serverless-function fallback. A blanket rewrite to
+# index.html would have bypassed all of that.

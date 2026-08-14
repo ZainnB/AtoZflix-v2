@@ -1,130 +1,227 @@
+<!--
+  "View all" listing behind every carousel's View all link.
+
+  Handles two shapes of source:
+    * paged endpoints  (latest, top_rated) - support limit + offset
+    * facet endpoints  (genre, country)    - take a value and no offset
+
+  The previous version computed pagination from `data.total_movies`, which no
+  endpoint has ever returned, so totalPages was always 0 and the next-page
+  button could never fire. Replaced with an offset-based "Load more" that stops
+  when a page comes back short - which needs no total from the server.
+-->
 <script>
     import { onMount } from "svelte";
-    import MovieCard from "./movie_card.svelte";
-    import { page } from "$app/stores";
-    import { api } from '../../../lib/api.js';
-  
+    import Navbar from "../Home/Navbar2.svelte";
+    import Footer from "../Register/Footer1.svelte";
+    import Line from "../Register/Line.svelte";
+    import MovieCard from "$lib/components/MovieCard.svelte";
+    import MovieGrid from "$lib/components/MovieGrid.svelte";
+    import { api } from "../../../lib/api.js";
+    import { redirectToRegisterIfNotAuthenticated } from "/src/utils/auth.js";
+
+    const PAGE_SIZE = 60;
+    const FACET_TYPES = new Set(["genre", "country"]);
+
     let movies = [];
-    let type = ""; // API type, e.g., "latest" or "top_rated"
-    let heading = ""; // Page heading
-    let pageNumber = 1; // Current page
-    const limit = 80; // Number of movies per page
-    let totalMovies = 0; // Total number of movies fetched from the backend
-    let totalPages = 0; // Total number of pages for pagination
-    let error = ""; // To store error messages
-  
-    // Extract query parameters from the URL using URLSearchParams
+    let type = "";
+    let value = "";
+    let heading = "";
+    let offset = 0;
+    let loading = true;
+    let loadingMore = false;
+    let exhausted = false;
+    let error = "";
+
     onMount(async () => {
-      try {
-        // Fetch query parameters from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        type = urlParams.get("type") || "";  // API type (e.g., latest, top_rated)
-        heading = urlParams.get("heading") || "";  // Page heading (e.g., "Latest Movies")
-  
-        // Fetch movies based on current params
-        await fetchMovies();
-      } catch (err) {
-        error = "Failed to fetch movies.";
-        console.error("Error fetching movies:", err);
-      }
+        redirectToRegisterIfNotAuthenticated();
+        const params = new URLSearchParams(window.location.search);
+        type = params.get("type") || "latest";
+        value = params.get("value") || "";
+        heading = params.get("heading") || "Browse";
+        await load();
     });
-  
-    // Fetch movies from the backend API
-    async function fetchMovies() {
-      try {
-        const offset = (pageNumber - 1) * limit;
-        const data = await api.get(`/api/${type}?limit=${limit}&offset=${offset}`);
-        movies = data.movies || [];
-        totalMovies = data.total_movies || 0;  // Total movies from the backend
-        totalPages = Math.ceil(totalMovies / limit);  // Calculate total pages
-      } catch (err) {
-        console.error("Error fetching movies:", err);
-        error = err.message || "Error fetching movies.";
-      }
+
+    function buildUrl() {
+        if (FACET_TYPES.has(type)) {
+            // Facet endpoints have no offset, so everything is fetched in one go.
+            return `/api/${type}?${type}=${encodeURIComponent(value)}&limit=${PAGE_SIZE * 4}`;
+        }
+        return `/api/${type}?limit=${PAGE_SIZE}&offset=${offset}`;
     }
-  
-    function nextPage() {
-      if (pageNumber < totalPages) {
-        pageNumber += 1;
-        fetchMovies();
-      }
+
+    async function load() {
+        try {
+            const data = await api.get(buildUrl());
+            const batch = data.movies || [];
+            movies = batch;
+            // A short page means there is nothing after it.
+            exhausted = FACET_TYPES.has(type) || batch.length < PAGE_SIZE;
+            error = "";
+        } catch (err) {
+            error = err.message || "Could not load these films.";
+        } finally {
+            loading = false;
+        }
     }
-  
-    function prevPage() {
-      if (pageNumber > 1) {
-        pageNumber -= 1;
-        fetchMovies();
-      }
+
+    async function loadMore() {
+        if (loadingMore || exhausted) return;
+        loadingMore = true;
+        offset += PAGE_SIZE;
+        try {
+            const data = await api.get(buildUrl());
+            const batch = data.movies || [];
+            // De-duplicate: overlapping offsets would otherwise repeat cards and
+            // break the keyed each block.
+            const seen = new Set(movies.map((m) => m.movie_id));
+            movies = [...movies, ...batch.filter((m) => !seen.has(m.movie_id))];
+            if (batch.length < PAGE_SIZE) exhausted = true;
+        } catch (err) {
+            offset -= PAGE_SIZE;
+            error = err.message || "Could not load more.";
+        } finally {
+            loadingMore = false;
+        }
     }
-  </script>
-  
-  <div class="view-all-page">
-    <h1>{heading}</h1>
-    {#if error}
-      <p class="error">{error}</p>
-    {/if}
-    <div class="movie-grid">
-      {#each movies as movie}
-        <MovieCard poster_path={movie.poster_path} movie_id={movie.movie_id} />
-      {/each}
-    </div>
-  
-    <div class="pagination">
-      <button on:click={prevPage} disabled={pageNumber === 1}>Previous</button>
-      <span>Page {pageNumber} of {totalPages}</span>
-      <button on:click={nextPage} disabled={pageNumber === totalPages}>Next</button>
-    </div>
-  </div>
-  
-  <style>
-    .view-all-page {
-      padding: 1rem;
-      color: #fff;
-      background-color: #121212;
+</script>
+
+<svelte:head><title>{heading} — AtoZflix</title></svelte:head>
+
+<div class="page">
+    <div class="navbar-wrapper"><Navbar /></div>
+
+    <header class="hero">
+        <div class="shell">
+            <p class="eyebrow">Browse</p>
+            <h1>{heading}</h1>
+            {#if !loading && movies.length}
+                <p class="lede">
+                    Showing {movies.length}{exhausted ? "" : "+"} films
+                </p>
+            {/if}
+        </div>
+    </header>
+
+    <section class="shell listing">
+        {#if error && !movies.length}
+            <p class="error">{error}</p>
+        {/if}
+
+        <MovieGrid
+            {loading}
+            empty={!loading && movies.length === 0}
+            emptyTitle="Nothing to show"
+            emptyBody="We could not find any films for this selection."
+            emptyActionHref="/components/Home"
+            emptyActionLabel="Back home"
+        >
+            {#each movies as movie (movie.movie_id)}
+                <MovieCard
+                    movie_id={movie.movie_id}
+                    poster_path={movie.poster_path}
+                    title={movie.title}
+                    rating={movie.rating_avg}
+                />
+            {/each}
+        </MovieGrid>
+
+        {#if !loading && movies.length && !exhausted}
+            <div class="more-wrap">
+                <button class="more" on:click={loadMore} disabled={loadingMore}>
+                    {loadingMore ? "Loading…" : "Load more"}
+                </button>
+            </div>
+        {/if}
+    </section>
+
+    <Line />
+    <Footer />
+</div>
+
+<style>
+    .page {
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
     }
-  
+
+    .navbar-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 10;
+    }
+
+    .hero {
+        padding-top: calc(var(--nav-height) + 2.5rem);
+        padding-bottom: 1.75rem;
+        background:
+            radial-gradient(120% 100% at 20% 0%, rgba(45, 212, 191, 0.10), transparent 60%),
+            linear-gradient(to bottom, var(--surface), var(--bg));
+        border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+        margin: 0 0 0.3rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+    }
+
     h1 {
-      text-align: center;
-      margin-bottom: 1rem;
+        margin: 0 0 0.4rem;
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
     }
-  
-    .movie-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 1rem;
-      margin: 1rem 0;
+
+    .lede {
+        margin: 0;
+        color: var(--text-dim);
+        font-size: 0.95rem;
     }
-  
-    .pagination {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-  
-    .pagination button {
-      padding: 0.5rem 1rem;
-      background-color: #098577;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-  
-    .pagination button:disabled {
-      background-color: #444;
-      cursor: not-allowed;
-    }
-  
-    .pagination button:hover:not(:disabled) {
-      background-color: #064e45;
-    }
-  
+
+    .listing { padding-block: 2.25rem 3.5rem; }
+
     .error {
-      color: red;
-      text-align: center;
-      margin-top: 1rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius);
+        border: 1px solid var(--danger-dim);
+        background: rgba(248, 113, 113, 0.1);
+        color: var(--danger);
+        font-size: 0.9rem;
     }
-  </style>
-  
+
+    .more-wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 2.5rem;
+    }
+
+    .more {
+        padding: 0.75rem 2rem;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-pill);
+        background: none;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+    }
+
+    .more:hover:not(:disabled) {
+        background: var(--accent-wash);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .more:disabled { opacity: 0.5; cursor: progress; }
+</style>

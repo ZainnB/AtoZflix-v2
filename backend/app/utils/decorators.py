@@ -84,9 +84,16 @@ def verify_user_ownership(f):
         if not request_user_id:
             request_user_id = request.args.get('user_id', type=int)
         
-        # From JSON body
+        # From JSON body.
+        #
+        # get_json(silent=True) rather than request.json: a GET carrying a
+        # Content-Type of application/json but no body (which is what fetch
+        # sends when default headers are set) made request.json raise, and Flask
+        # turned that into a 400 before the route ever ran. silent=True returns
+        # None instead of raising.
         if not request_user_id and request.is_json:
-            request_user_id = request.json.get('user_id')
+            body = request.get_json(silent=True) or {}
+            request_user_id = body.get('user_id')
         
         # Verify ownership
         if request_user_id and int(request_user_id) != int(token_user_id):
@@ -94,14 +101,11 @@ def verify_user_ownership(f):
         
         # Replace user_id in kwargs/request with token user_id for security
         if request_user_id is None:
-            # No user_id in request, use token user_id
+            # No user_id in the request, so fall back to the token's. Routes
+            # read the id from g.current_user regardless; this only keeps the
+            # kwargs signature consistent for routes that take it in the path.
             if 'user_id' in kwargs:
                 kwargs['user_id'] = token_user_id
-            elif request.is_json:
-                request.json['user_id'] = token_user_id
-            else:
-                # For query params, we'll handle in the route
-                pass
         
         return f(*args, **kwargs)
     return decorated

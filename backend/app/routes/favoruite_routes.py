@@ -3,8 +3,7 @@ from app import db
 from sqlalchemy.exc import IntegrityError
 from flask import Blueprint,request,jsonify, current_app as app, g
 from app.utils.decorators import token_required, verify_user_ownership
-import logging
-logging.basicConfig(level=logging.DEBUG)
+from datetime import date
 
 favourite_bp=Blueprint('favourite',__name__)
 
@@ -21,20 +20,28 @@ def get_favourites():
    
     try:
         favourites = (
-            db.session.query(Favorite.movie_id, Movie.poster_path, Favorite.added_at)
+            db.session.query(
+                Favorite.movie_id, Movie.poster_path, Movie.title,
+                Movie.rating_avg, Movie.release_date, Favorite.added_at,
+            )
             .join(Movie, Favorite.movie_id == Movie.movie_id)
             .filter(Favorite.user_id == user_id)
-            .order_by(Favorite.added_at.desc())
+            # NULLs last: rows saved before added_at was being written would
+            # otherwise sort to the top of a "most recent first" list.
+            .order_by(Favorite.added_at.is_(None), Favorite.added_at.desc())
             .all()
         )
 
         result = [
             {
-                "movie_id": movie_id,
-                "poster_path": poster_path,
-                "added_at": added_at
+                "movie_id": r.movie_id,
+                "poster_path": r.poster_path,
+                "title": r.title,
+                "rating_avg": r.rating_avg,
+                "release_date": r.release_date,
+                "added_at": r.added_at,
             }
-            for movie_id, poster_path, added_at in favourites
+            for r in favourites
         ]
 
         return jsonify({"status": "success", "favourites": result}), 200
@@ -63,7 +70,7 @@ def add_to_favorites():
             return jsonify({"success": False, "message": "Movie is already in favorites"}), 409
 
         # Add new favorite
-        new_fav = Favorite(user_id=user_id, movie_id=movie_id)
+        new_fav = Favorite(user_id=user_id, movie_id=movie_id, added_at=date.today())
         db.session.add(new_fav)
         db.session.commit()
 

@@ -3,7 +3,12 @@ import logging
 from sqlalchemy.exc import IntegrityError
 from app import db
 from datetime import datetime
-logging.basicConfig(level=logging.DEBUG)
+
+# NOTE: no logging.basicConfig() here. Calling it at import time sets the ROOT
+# logger for the whole process, which switched every third-party library to
+# DEBUG - urllib3 was logging every outbound TMDb URL. Log level belongs to the
+# application entry point, not to a utility module.
+logger = logging.getLogger(__name__)
 
 
 
@@ -13,10 +18,10 @@ def MovieLog_action(session, admin_id, action, details):
         session.add(log)
         session.commit()
     except IntegrityError as e:
-        logging.error(f"IntegrityError: {e}")
+        logger.error(f"IntegrityError: {e}")
         session.rollback()
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logger.error(f"Error: {e}")
         session.rollback()
 
 def UserLog_action(session, admin_id, user_id, action, old_data=None, new_data=None):
@@ -25,8 +30,8 @@ def UserLog_action(session, admin_id, user_id, action, old_data=None, new_data=N
         session.add(log)
         session.commit()
     except IntegrityError as e:
-        logging.error(f"IntegrityError: {e}")
+        logger.error(f"IntegrityError: {e}")
         session.rollback()
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logger.error(f"Error: {e}")
         session.rollback()

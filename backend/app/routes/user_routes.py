@@ -1,5 +1,5 @@
 from app.models.models import User
-from app import db
+from app import db, limiter
 from flask import Blueprint,request,jsonify, current_app
 from app.utils.validators import is_valid_email
 from app.utils.helpers import hash_password,check_password_hash
@@ -8,8 +8,13 @@ from app.utils.decorators import token_required
 
 user_bp=Blueprint('user',__name__)
 
+# Credential endpoints are the ones that actually need throttling - catalog
+# reads do not, and rate limiting those locked real users out of the app after
+# a handful of page views (see the comment in app/__init__.py).
+
 # Register logic
 @user_bp.route('/api/register',methods=['POST'])
+@limiter.limit("10 per hour")
 def register():
     data=request.json
     email=data.get('email')
@@ -49,6 +54,7 @@ def register():
     
 # Sign in logic
 @user_bp.route('/api/signin',methods=['POST'])
+@limiter.limit("20 per 15 minutes")
 def signin():
     data=request.json
     input_name=data.get('username')

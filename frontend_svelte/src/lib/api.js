@@ -89,9 +89,11 @@ async function refreshAccessToken() {
 async function apiRequest(url, options = {}) {
   const accessToken = getAccessToken();
   
-  // Set default headers
+  // Only declare a JSON content type when there is actually a JSON body.
+  // Sending it on a bodyless GET makes Flask's request.is_json true with
+  // nothing to parse, which several endpoints turned into a 400.
   const headers = {
-    'Content-Type': 'application/json',
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...options.headers,
   };
 
@@ -144,7 +146,22 @@ async function apiRequest(url, options = {}) {
 
     // Handle other error statuses
     if (!response.ok && response.status !== 401) {
-      const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+      // Flask serves 429 and 5xx as HTML error pages, so response.json()
+      // rejects and the old fallback surfaced a bare "Request failed" — which
+      // told the user nothing and made rate limiting look like a network fault.
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const wait = retryAfter ? Math.ceil(Number(retryAfter) / 60) : null;
+        throw new Error(
+          wait && Number.isFinite(wait)
+            ? `Too many requests. Please try again in about ${wait} minute${wait === 1 ? '' : 's'}.`
+            : 'Too many requests. Please slow down and try again shortly.'
+        );
+      }
+
+      const errorData = await response
+        .json()
+        .catch(() => ({ message: `Something went wrong (HTTP ${response.status}).` }));
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }
 

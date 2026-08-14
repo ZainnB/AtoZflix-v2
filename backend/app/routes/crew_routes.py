@@ -74,7 +74,7 @@ def search_crew():
 
         # Fetch movies associated with these crew_ids
         movies = (
-            db.session.query(Movie.movie_id, Movie.poster_path)
+            db.session.query(Movie.movie_id, Movie.poster_path, Movie.title, Movie.rating_avg)
             .join(MoviesCrew, MoviesCrew.movie_id == Movie.movie_id)
             .filter(MoviesCrew.crew_id.in_(crew_ids))
             .distinct()
@@ -82,8 +82,9 @@ def search_crew():
         )
 
         formatted_movies = [
-            {"poster_path": poster_path, "movie_id": movie_id}
-            for movie_id, poster_path in movies
+            {"poster_path": r.poster_path, "movie_id": r.movie_id,
+             "title": r.title, "rating_avg": r.rating_avg}
+            for r in movies
         ]
 
         return jsonify({"movies": formatted_movies}), 200
@@ -105,7 +106,7 @@ def get_crew_movies():
 
         # ORM Query
         movies = (
-            db.session.query(Movie.movie_id, Movie.poster_path)
+            db.session.query(Movie.movie_id, Movie.poster_path, Movie.title, Movie.rating_avg)
             .join(MoviesCrew, MoviesCrew.movie_id == Movie.movie_id)
             .filter(MoviesCrew.crew_id == crew_id)
             .order_by(Movie.rating_avg.desc())
@@ -114,8 +115,9 @@ def get_crew_movies():
         )
 
         result = [
-            {"poster_path": poster_path, "movie_id": movie_id}
-            for movie_id, poster_path in movies
+            {"poster_path": r.poster_path, "movie_id": r.movie_id,
+             "title": r.title, "rating_avg": r.rating_avg}
+            for r in movies
         ]
 
         return jsonify({"status": "success", "data": result}), 200

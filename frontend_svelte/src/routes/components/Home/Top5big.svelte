@@ -99,6 +99,14 @@
         }
     };
 
+    // The API returns an RFC-1123 date, so the badge was reading
+    // "Sun, 15 Mar 2026 00:00:00 GMT" - most of a phone's width for one fact.
+    const releaseYear = (value) => {
+        if (!value) return "";
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? String(value).slice(0, 4) : d.getFullYear();
+    };
+
     const toggleWatchlist = async () => {
         const movie = movies[currentIndex];
         const movie_id = movie.movie_id;
@@ -139,7 +147,7 @@
                             >⭐ {movies[currentIndex].rating}</span
                         >
                         <span class="meta-badge year"
-                            >{movies[currentIndex].release_date}</span
+                            >{releaseYear(movies[currentIndex].release_date)}</span
                         >
                         <span class="meta-badge duration"
                             >{movies[currentIndex].duration} min</span
@@ -236,7 +244,19 @@
             </button>
         </div>
     {:else}
-        <p>Loading movies...</p>
+        <!-- A bare "Loading movies..." line sat at the top-left of an otherwise
+             empty full-height block, colliding with the logo. A shaped skeleton
+             holds the hero's real layout instead. -->
+        <div class="hero-skeleton" aria-hidden="true">
+            <div class="hs-title skeleton"></div>
+            <div class="hs-meta skeleton"></div>
+            <div class="hs-copy skeleton"></div>
+            <div class="hs-actions">
+                <div class="hs-btn skeleton"></div>
+                <div class="hs-btn skeleton"></div>
+            </div>
+        </div>
+        <span class="visually-hidden">Loading featured movies…</span>
     {/if}
 </div>
 
@@ -244,12 +264,47 @@
     .slider {
         position: relative;
         width: 100%;
-        height: 100vh;
+        /* Was a flat 100vh. Two problems on a phone: `vh` is measured against
+           the viewport WITH the browser chrome hidden, so the hero jumps as the
+           URL bar collapses; and a full screen of backdrop with nothing else
+           visible means the rest of the page is entirely below the fold.
+           `svh` is the stable small-viewport unit, and the cap keeps the hero
+           from dominating tall desktop screens. */
+        height: min(78svh, 760px);
         overflow: hidden;
-        font-family: "Netflix Sans", "Helvetica Neue", "Segoe UI", "Roboto",
-            "Ubuntu", sans-serif;
+        font-family: var(--font);
         color: white;
     }
+
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .hero-skeleton {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.9rem;
+        padding-inline: var(--gutter);
+        padding-top: 4rem;
+        background: linear-gradient(to bottom, var(--surface), var(--bg));
+    }
+
+    .hs-title { height: clamp(2rem, 6vw, 3rem); width: min(70%, 22rem); border-radius: 8px; }
+    .hs-meta  { height: 1.1rem; width: min(45%, 14rem); border-radius: 6px; }
+    .hs-copy  { height: 3.5rem; width: min(80%, 34rem); border-radius: 8px; }
+    .hs-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .hs-btn { height: 2.6rem; width: 8.5rem; border-radius: 999px; }
 
     .slider-bg {
         position: absolute;
@@ -266,7 +321,10 @@
         flex-direction: column;
         justify-content: center;
         align-items: flex-start;
-        padding: 0 4rem;
+        /* 4rem of fixed padding each side left only ~247px of usable width on a
+           375px phone. The shared gutter token scales with the viewport and
+           keeps the hero copy aligned with every row below it. */
+        padding-inline: var(--gutter);
     }
 
     .slider-overlay {
@@ -282,16 +340,17 @@
     .movie-details {
         position: relative;
         z-index: 2;
-        max-width: 50%;
-        margin-left: 1rem;
+        max-width: min(50%, 44rem);
         margin-top: 6rem;
     }
 
     .movie-details h1 {
-        font-size: 2.5rem;
+        font-size: clamp(1.75rem, 5.5vw, 3rem);
         margin-bottom: 1rem;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         letter-spacing: -1px;
+        line-height: 1.1;
+        text-wrap: balance;
     }
 
     .movie-meta {
@@ -494,34 +553,99 @@
     }
 
     @media (max-width: 768px) {
+        .slider {
+            /* Shorter still on a phone, so the rows underneath are visible
+               without scrolling a whole screen first. */
+            height: min(62svh, 520px);
+        }
+
+        /* Vertically centring a tall stack inside a fixed-height box makes it
+           overflow BOTH ways - the title disappeared behind the navbar while the
+           description bled into the next section. Anchoring to the bottom (the
+           standard streaming-hero treatment) means overflow can only ever go one
+           way, and the clamp below stops it going anywhere at all. */
+        .slider-bg {
+            justify-content: flex-end;
+            /* Clears the progress dots pinned to the bottom edge. */
+            padding-bottom: 2.25rem;
+        }
+
         .movie-details {
-            max-width: 80%;
-            margin-left: 1rem;
+            max-width: 100%;
+            margin-left: 0;
+            margin-top: 0;
         }
 
         .movie-details h1 {
-            font-size: 2.5rem;
+            /* Two lines maximum; a long title otherwise eats the whole hero. */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 0.6rem;
         }
 
+        .movie-meta {
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 0.6rem;
+        }
+
+        /* HD and the certificate are decoration, not information - first to go
+           when the row has to wrap. */
+        .meta-badge.hd,
+        .meta-badge.rating {
+            display: none;
+        }
+
+        .movie-description {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            max-width: 100%;
+            font-size: 0.88rem;
+            margin-bottom: 0.9rem;
+        }
+
+        /* Decorative, and on a phone it sat directly on top of the Watch Later
+           button. The hero is self-evidently the featured slot; the label is
+           not carrying information worth a collision. */
+        .trending-label {
+            display: none;
+        }
+
+        /* Two buttons stacked full-width pushed the description off screen.
+           Side by side they fit, and each still clears the 44px touch target. */
         .action-buttons {
-            flex-direction: column;
-            align-items: flex-start;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 0.5rem;
         }
 
         .action-buttons button {
-            width: 100%;
-            margin-bottom: 10px;
+            width: auto;
+            flex: 1 1 auto;
+            min-height: 44px;
+            margin-bottom: 0;
         }
+        /* Both of these previously sat at the bottom, directly on top of the
+           now bottom-anchored copy and action buttons. The arrows move up out
+           of the way; the progress dots sit at the very bottom edge. */
         .nav-btn-group {
-            bottom: 1rem;
-            right: 1rem;
+            top: calc(var(--nav-height) + 0.5rem);
+            bottom: auto;
+            right: 0.75rem;
         }
         .nav-btn {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
         }
         .progress-container {
-            bottom: 6rem;
+            bottom: 0.5rem;
         }
         .progress-bar {
             gap: 0.25rem;

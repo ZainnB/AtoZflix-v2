@@ -1,0 +1,211 @@
+/*
+  AtoZFlix design tokens.
+
+  Loaded once from src/routes/+layout.svelte so every route shares one palette,
+  one type scale and one page rhythm. Before this, five carousel components each
+  carried their own copy of the same ~80 lines of CSS with slightly different
+  numbers, which is why rows did not line up with each other.
+
+  Everything is a custom property so a component can override a single value
+  (a carousel showing fewer, larger cards, say) without forking the stylesheet.
+*/
+
+:root {
+  /* Ground and surfaces. Not pure black - a slightly blue-lifted near-black
+     keeps poster art from bleeding into the page and reads less harsh. */
+  --bg: #0a0a0d;
+  --surface: #141419;
+  --surface-2: #1c1c23;
+  --surface-3: #26262f;
+
+  /* Text. Three steps is enough; more and hierarchy stops being legible. */
+  --text: #f4f4f5;
+  --text-dim: #a1a1aa;
+  --text-faint: #71717a;
+
+  /* The project's existing teal, brightened for AA contrast on the dark ground.
+     The original #098577 fails contrast against #0a0a0d for small text. */
+  --accent: #2dd4bf;
+  --accent-strong: #14b8a6;
+  --accent-dim: #0f766e;
+  --accent-wash: rgba(45, 212, 191, 0.12);
+
+  --danger: #f87171;
+  --danger-dim: #b91c1c;
+  --star: #fbbf24;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+
+  /* Page shell. Every centered region uses these two values, which is what
+     makes the rows align down the page. */
+  --shell-max: 1680px;
+  --gutter: clamp(1rem, 3.5vw, 3.5rem);
+
+  /* Carousel geometry. --per-view is the number of cards visible in a row and
+     is stepped down at each breakpoint below; card width is derived from it, so
+     cards always fill the row exactly with no ragged right edge. */
+  --per-view: 10;
+  --card-gap: 0.6rem;
+
+  --font: "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Ubuntu,
+    system-ui, sans-serif;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --nav-height: 70px;
+}
+
+/* Card count by viewport. Ten cards is right on a desktop and unusable on a
+   phone, where each would be ~35px wide. The row component reads --per-view, so
+   these five rules resize every carousel in the app at once. */
+@media (max-width: 1500px) { :root { --per-view: 8; } }
+@media (max-width: 1200px) { :root { --per-view: 6; } }
+@media (max-width: 900px)  { :root { --per-view: 4; } }
+@media (max-width: 600px)  { :root { --per-view: 3; --card-gap: 0.4rem; } }
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyboard focus must always be visible. Several components previously removed
+   outlines with no replacement, which makes the app unusable without a mouse. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* The one centering primitive. Any full-width section wraps its content in
+   .shell to sit in the same column as every other section. */
+.shell {
+  width: 100%;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/*
+  Touch ergonomics.
+
+  Measured with a headless browser at 375px: chips and "View all" links were
+  27px tall, footer links 20px, "Read more" 18px, and the nav toggle 30px.
+  Apple and Google both put the comfortable minimum at ~44px, and WCAG 2.5.8
+  sets 24px as the floor.
+
+  These are global rules rather than per-component edits because the same few
+  class names recur across a dozen components - Svelte keeps the authored class
+  name alongside its scoping hash, so `.chip` here still matches
+  `class="chip s-AbC123"`. Only min-height and padding are set, so nothing
+  fights a component's own colour or layout rules.
+*/
+@media (hover: none), (max-width: 900px) {
+  .chip,
+  .view-all,
+  .more,
+  .remove,
+  .nav-link,
+  .footer-link,
+  .social-link,
+  .logout-btn,
+  .menu-toggle {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chip,
+  .view-all,
+  .nav-link,
+  .footer-link {
+    padding-inline: 0.85rem;
+  }
+
+  .menu-toggle {
+    min-width: 44px;
+  }
+
+  /* Footer link lists get breathing room so neighbouring targets do not touch. */
+  .footer-link {
+    margin-block: 0.1rem;
+  }
+}
+
+/* Nothing should render below 11px on a phone - it stops being readable and
+   iOS zooms the page when a sub-16px input is focused. */
+@media (max-width: 900px) {
+  .facts dt,
+  .stat dt,
+  .added,
+  .subtitle,
+  .role {
+    font-size: 0.75rem;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+}
+
+/* Skeleton shimmer, shared by every loading state. */
+@keyframes atoz-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/*
+  Skeletons sit on --bg (#0a0a0d). Built from --surface/--surface-2 they were
+  almost the same value as the page, so a loading shelf looked like a blank gap
+  rather than content on its way. These steps are lifted enough to read as
+  placeholders without glaring on a dark screen at night.
+*/
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #1b1b22 25%,
+    #2a2a34 50%,
+    #1b1b22 75%
+  );
+  background-size: 200% 100%;
+  animation: atoz-shimmer 1.4s infinite linear;
+  border-radius: var(--radius);
+}

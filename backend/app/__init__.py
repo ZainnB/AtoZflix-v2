@@ -1,5 +1,5 @@
 from flask_cors import CORS
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -10,6 +10,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 db = SQLAlchemy()
+
+# Declared at module scope, bound to the app in create_app(). This is the
+# documented Flask-Limiter pattern and the only one that works for per-route
+# limits: `@limiter.limit(...)` records the limit when the route module is
+# imported, so the Limiter has to exist before that happens.
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["2000 per hour"],
+    # CORS preflights are issued by the browser, not the user, and counting them
+    # doubles every cross-origin request against the budget.
+    default_limits_exempt_when=lambda: request.method == "OPTIONS",
+    headers_enabled=True,
+)
 
 def create_app():
     app = Flask(__name__)
@@ -39,14 +52,19 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     
-    # Rate limiting (must be initialized after app is created)
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"]
-    )
-    
-    # Make limiter available to routes via app context
+    # Rate limiting.
+    #
+    # The previous default was "200 per day, 50 per hour" applied to EVERY
+    # endpoint, which is unusable for a browsing app: the home page alone issues
+    # nine API calls, so a real user was locked out after roughly six page views
+    # and every shelf then failed. Worse, the browser reports a rate-limited
+    # preflight as a CORS error, so the real cause is invisible in the console.
+    #
+    # Blanket read limits are the wrong tool anyway. What needs protecting is
+    # credential stuffing on the auth endpoints, which are limited explicitly at
+    # the route (see user_routes.py). The generous default above only exists to
+    # stop a runaway client hammering the API.
+    limiter.init_app(app)
     app.limiter = limiter
 
     # Register blueprints
@@ -72,5 +90,7 @@ def create_app():
     app.register_blueprint(favourite_bp)
     from app.routes.watchlist_routes import watchlater_bp
     app.register_blueprint(watchlater_bp)
+    from app.routes.recommendation_routes import recommendation_bp
+    app.register_blueprint(recommendation_bp)
 
     return app
