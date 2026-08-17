@@ -522,6 +522,33 @@ def collect_interactions(include_movielens=False):
     }
 
 
+def collect_user_interactions(user_id):
+    """
+    Read ONE user's interactions live. Never cached.
+
+
+    prefs = defaultdict(float)
+
+    for movie_id, rating, rated_at in db.session.query(
+        Rating.movie_id, Rating.rating, Rating.rated_at
+    ).filter(Rating.user_id == user_id).all():
+        if rating is None:
+            continue
+        prefs[movie_id] += ((rating - RATING_MIDPOINT) / RATING_MIDPOINT) * _decay(rated_at)
+
+    for movie_id, added_at in db.session.query(
+        Favorite.movie_id, Favorite.added_at
+    ).filter(Favorite.user_id == user_id).all():
+        prefs[movie_id] += FAVOURITE_WEIGHT * _decay(added_at)
+
+    for movie_id, added_at in db.session.query(
+        WatchLater.movie_id, WatchLater.added_at
+    ).filter(WatchLater.user_id == user_id).all():
+        prefs[movie_id] += WATCHLATER_WEIGHT * _decay(added_at)
+
+    return {m: max(-1.0, min(1.5, p)) for m, p in prefs.items() if abs(p) > 1e-9}
+
+
 def load_precomputed_neighbours():
     """
     Read the offline-built item-item model from Item_Similarity.
@@ -823,8 +850,12 @@ def recommend_for_user(user_id, limit=20, explain=False):
 
     Returns a list of {movie_id, score, source, ...} dicts, best first.
     """
-    content_model, cf_model, interactions = MODEL_CACHE.get()
-    user_prefs = interactions.get(user_id, {})
+    content_model, cf_model, _cached_interactions = MODEL_CACHE.get()
+
+    # Read live rather than out of the cache - see collect_user_interactions.
+    # A favourite added a second ago must be reflected in this response, both as
+    # a signal and as something to exclude from the results.
+    user_prefs = collect_user_interactions(user_id)
     seen = set(user_prefs.keys())
 
     if not user_prefs:
