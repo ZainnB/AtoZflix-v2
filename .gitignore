@@ -1,8 +1,8 @@
 # Environment files - real secrets. Keep the documented templates tracked.
 .env
 .env.*
-!.env.example
-!.env.test
+.env.example
+.env.test
 
 # Dataset folder
 movie_lens_data/
