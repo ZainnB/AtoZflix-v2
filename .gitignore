@@ -1,5 +1,8 @@
-# Environment files
-.env*
+# Environment files - real secrets. Keep the documented templates tracked.
+.env
+.env.*
+!.env.example
+!.env.test
 
 # Dataset folder
 movie_lens_data/
@@ -9,6 +12,7 @@ movie_lens_data/
 # https://files.grouplens.org/datasets/movielens/ml-25m.zip
 ml-25m/
 ml-20m/
+ml-25m.zip
 
 # db files
 *.db
@@ -19,7 +23,14 @@ demo_latent.json
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
 
 # Virtual env
 venv/
+.venv/
+
+# Netlify local state
 .netlify/
+
+# Generated directory listing - regenerate on demand, do not track
+structure.txt

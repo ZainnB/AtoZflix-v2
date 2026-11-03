@@ -35,10 +35,21 @@ only so that `eval_recommender.py` can compute an oracle upper bound - a ranker
 that cheats by reading the ground truth. Without that ceiling there is no way to
 tell whether a given hit rate means the model is weak or the task is hard.
 
+THIS SCRIPT DROPS EVERY TABLE
+-----------------------------
+It calls db.drop_all() before generating, so it must only ever be pointed
+at a throwaway database. Run bare, it picks up DATABASE_URL from .env,
+which on a development machine is the real catalog - so it refuses unless
+the target looks disposable (a SQLite file, or a database named
+demo/test/scratch/tmp) or --force is passed explicitly.
+
 Usage:
+    python seed_demo_data.py sqlite:///demo.db
     DATABASE_URL=sqlite:///demo.db python seed_demo_data.py
+    python seed_demo_data.py --force            # only if you mean it
 """
 
+import argparse
 import json
 import os
 import random
@@ -46,6 +57,7 @@ import sys
 from datetime import date, timedelta
 
 from app import create_app, db
+from app.utils.helpers import safe_database_uri
 from app.models.models import (
     Actor,
     Country,
@@ -140,7 +152,24 @@ def build_clusters(rng, themes):
     return clusters
 
 
-def seed(database_url=None):
+def looks_disposable(uri):
+    """
+    True when the target is plainly a scratch database.
+
+    SQLite is a file, so a bad guess there costs nothing. A server-hosted
+    database is only treated as disposable when its name says so. Anything
+    else - including the atozflix_db in a developer .env - is assumed to hold
+    real data that took half an hour of TMDb calls and a 678MB CSV to build.
+    """
+    if not uri:
+        return False
+    if uri.startswith("sqlite"):
+        return True
+    name = uri.rsplit("/", 1)[-1].split("?")[0].lower()
+    return any(hint in name for hint in ("demo", "test", "scratch", "tmp"))
+
+
+def seed(database_url=None, force=False):
     rng = random.Random(SEED)
 
     if database_url:
@@ -149,7 +178,23 @@ def seed(database_url=None):
     app = create_app()
     with app.app_context():
         uri = app.config['SQLALCHEMY_DATABASE_URI']
-        print(f"Database: {uri}")
+        safe_uri = safe_database_uri(uri)
+
+        # db.drop_all() below is unconditional and irreversible, so the target
+        # has to earn it. This guard exists because the default target is
+        # whatever .env says, which is exactly the database you do not want.
+        if not force and not looks_disposable(uri):
+            sys.exit(
+                "\nRefusing to run against: " + safe_uri + "\n"
+                "\nThis script calls db.drop_all(), which would destroy every row"
+                " in that database - an imported catalog and millions of"
+                " MovieLens ratings included.\n"
+                "\nPoint it at a throwaway instead:\n"
+                "    python seed_demo_data.py sqlite:///demo.db\n"
+                "\nor pass --force if you genuinely mean to wipe the one above.\n"
+            )
+
+        print(f"Database: {safe_uri}")
         print("Dropping and recreating all tables...")
         db.drop_all()
         db.create_all()
@@ -333,4 +378,18 @@ def seed(database_url=None):
 
 
 if __name__ == "__main__":
-    seed(sys.argv[1] if len(sys.argv) > 1 else None)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "database_url", nargs="?", default=None,
+        help="SQLAlchemy URL to seed, e.g. sqlite:///demo.db. Defaults to "
+             "DATABASE_URL from the environment.",
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="drop and reseed even when the target does not look disposable",
+    )
+    args = parser.parse_args()
+    seed(args.database_url, force=args.force)

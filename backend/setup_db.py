@@ -1,6 +1,7 @@
 # setup_db.py
 from app import create_app, db
 from app.models import models
+from app.utils.helpers import safe_database_uri
 from dotenv import load_dotenv
 import os
 import sys
@@ -14,22 +15,13 @@ with app.app_context():
     print("=" * 60)
     print("Database Setup Script")
     print("=" * 60)
-    
-    # Hide password in output
-    if '@' in database_uri:
-        parts = database_uri.split('@')
-        if ':' in parts[0]:
-            user_pass = parts[0].split('://', 1)[1]
-            if ':' in user_pass:
-                user = user_pass.split(':')[0]
-                safe_uri = database_uri.replace(user_pass.split(':')[1], '***')
-            else:
-                safe_uri = database_uri
-        else:
-            safe_uri = database_uri
-    else:
-        safe_uri = database_uri
-        
+
+    # The old inline masking replaced every occurrence of the password string
+    # anywhere in the URI, which mangles the host or database name whenever the
+    # password happens to be a substring of either. One shared helper now does
+    # it properly for every script.
+    safe_uri = safe_database_uri(database_uri)
+
     print(f"Database URI: {safe_uri}")
     print(f"Database Type: {'MySQL' if 'mysql' in database_uri.lower() else 'SQLite'}")
     print("=" * 60)
@@ -38,26 +30,26 @@ with app.app_context():
         # Test connection first
         print("Testing database connection...")
         db.engine.connect()
-        print("✓ Connection successful!")
+        print("[OK] Connection successful!")
         
         print("\nCreating tables...")
         db.create_all()
-        print("✓ All tables created successfully (or already exist).")
+        print("[OK] All tables created successfully (or already exist).")
         
         # Verify tables
         print("\nVerifying tables...")
         inspector = db.inspect(db.engine)
         tables = inspector.get_table_names()
-        print(f"✓ Found {len(tables)} tables:")
+        print(f"[OK] Found {len(tables)} tables:")
         for table in sorted(tables):
             print(f"    - {table}")
             
         print("\n" + "=" * 60)
-        print("✓ Database setup completed successfully!")
+        print("[OK] Database setup completed successfully!")
         print("=" * 60)
         
     except Exception as e:
-        print(f"\n✗ Error during database setup:")
+        print(f"\n[FAIL] Error during database setup:")
         print(f"  {type(e).__name__}: {e}")
         print("\n" + "=" * 60)
         print("TROUBLESHOOTING:")

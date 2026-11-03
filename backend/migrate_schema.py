@@ -35,6 +35,8 @@ import argparse
 from sqlalchemy import inspect, text
 
 from app import create_app, db
+
+from app.utils.helpers import safe_database_uri
 from app.models import models  # noqa: F401  (registers the models on db.metadata)
 
 
@@ -55,7 +57,7 @@ def main():
     with app.app_context():
         print("=" * 70)
         print("Schema reconciliation")
-        print(f"Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        print(f"Database: {safe_database_uri(app.config['SQLALCHEMY_DATABASE_URI'])}")
         print("=" * 70)
 
         # Create anything entirely absent first, so only real tables are diffed.
@@ -63,19 +65,34 @@ def main():
 
         inspector = inspect(db.engine)
         dialect = db.engine.dialect
-        existing_tables = set(inspector.get_table_names())
+        # Identifiers have to be quoted the way THIS dialect quotes them.
+        # Double quotes are the SQL standard and are what SQLite uses, but
+        # MySQL reads "Movies" as a string literal unless ANSI_QUOTES is set,
+        # so a hand-rolled f-string produced error 1064 there. The dialect's
+        # own preparer emits backticks on MySQL and double quotes on SQLite,
+        # and also quotes reserved words such as "rank" correctly.
+        quote = dialect.identifier_preparer.quote
+        # Compared case-insensitively, deliberately. MySQL on Windows runs
+        # with lower_case_table_names=1 and folds every identifier to lower
+        # case, so the inspector returns "actors" where the model declares
+        # "Actors". An exact match skipped every table and then reported
+        # "Nothing to do" while ten columns were in fact missing - a silent
+        # no-op being a far worse failure here than an error would be.
+        existing_tables = {t.lower() for t in inspector.get_table_names()}
 
         planned = []
         for table in db.metadata.sorted_tables:
-            if table.name not in existing_tables:
+            if table.name.lower() not in existing_tables:
                 continue
-            live_columns = {c["name"] for c in inspector.get_columns(table.name)}
+            live_columns = {c["name"].lower()
+                            for c in inspector.get_columns(table.name)}
             for column in table.columns:
-                if column.name in live_columns:
+                if column.name.lower() in live_columns:
                     continue
 
                 column_type = sql_type_for(column, dialect)
-                clause = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}'
+                clause = (f"ALTER TABLE {quote(table.name)} "
+                          f"ADD COLUMN {quote(column.name)} {column_type}")
 
                 # SQLite refuses ADD COLUMN ... NOT NULL without a default,
                 # because existing rows would have nowhere to get a value.
@@ -92,8 +109,45 @@ def main():
                               f"default - adding as nullable")
                 planned.append((table.name, column.name, column_type, clause))
 
+        # Columns the DATABASE has that the models no longer declare.
+        #
+        # Not dropped - that needs a human decision and possibly a data
+        # migration - but reported loudly, because a leftover NOT NULL column
+        # with no default breaks every INSERT the application makes while
+        # being completely invisible to the missing-column diff above. The
+        # error MySQL raises names the column but not the reason, so this is
+        # the report that turns a baffling 1364 into an obvious one-line fix.
+        stale = []
+        for table in db.metadata.sorted_tables:
+            if table.name.lower() not in existing_tables:
+                continue
+            declared = {c.name.lower() for c in table.columns}
+            for live in inspector.get_columns(table.name):
+                if live["name"].lower() in declared:
+                    continue
+                blocking = (not live.get("nullable", True)
+                            and live.get("default") is None)
+                stale.append((table.name, live["name"], live.get("type"), blocking))
+
+        if stale:
+            print(f"\n{len(stale)} column(s) in the database are not in the models:\n")
+            for table_name, column_name, column_type, blocking in stale:
+                flag = ("  <-- NOT NULL, no default: BREAKS EVERY INSERT"
+                        if blocking else "")
+                print(f"  {table_name}.{column_name}  ({column_type}){flag}")
+            if any(b for *_, b in stale):
+                print()
+                print("  Every INSERT into the table(s) flagged above fails with")
+                print("  MySQL error 1364. Either drop the column:")
+                for table_name, column_name, _t, blocking in stale:
+                    if blocking:
+                        print(f"    ALTER TABLE {quote(table_name)} "
+                              f"DROP COLUMN {quote(column_name)};")
+                print("  or make it nullable, if the data still matters.")
+
         if not planned:
-            print("\nNothing to do - database matches the models.")
+            if not stale:
+                print("\nNothing to do - database matches the models.")
             return
 
         print(f"\n{len(planned)} column(s) missing:\n")

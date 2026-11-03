@@ -34,12 +34,14 @@ import os
 import sys
 import time
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from sqlalchemy import text
 
 from app import create_app, db
+
+from app.utils.helpers import safe_database_uri
 from app.models.models import Movie, MovieLensRating
 
 load_dotenv()
@@ -86,7 +88,7 @@ def main():
     with app.app_context():
         print("=" * 70)
         print("MovieLens ratings import")
-        print(f"Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        print(f"Database: {safe_database_uri(app.config['SQLALCHEMY_DATABASE_URI'])}")
         print("=" * 70)
         db.create_all()
 
@@ -123,21 +125,26 @@ def main():
 
         # --- pass 2: stream the rows we decided to keep ----------------------
         print("\nPass 2/2: inserting ...")
-        db.session.execute(text("DELETE FROM MovieLens_Ratings"))
+        db.session.execute(MovieLensRating.__table__.delete())
         db.session.commit()
 
         # Raw executemany rather than ORM objects: constructing millions of
         # model instances is dominated by Python object overhead, and there is
         # no business logic to run on the way in.
-        insert_sql = text(
-            "INSERT OR IGNORE INTO MovieLens_Ratings "
-            "(ml_user_id, movie_id, rating, rated_at) VALUES (:u, :m, :r, :d)"
-        )
-        if not db.engine.dialect.name == "sqlite":
-            insert_sql = text(
-                "INSERT INTO MovieLens_Ratings "
-                "(ml_user_id, movie_id, rating, rated_at) VALUES (:u, :m, :r, :d)"
-            )
+        #
+        # Duplicates have to be tolerated, not merely assumed away. 34 TMDb
+        # ids in links.csv are claimed by two MovieLens ids each (re-releases
+        # and duplicate entries), and both of those ids map onto the one
+        # surviving catalog row here - so a user who rated both halves of such
+        # a pair produces the same (ml_user_id, movie_id) primary key twice.
+        # SQLite absorbed that via INSERT OR IGNORE; a plain INSERT on MySQL
+        # raises IntegrityError and takes the whole 50,000-row batch with it.
+        # prefix_with() lets each dialect spell its own ignore.
+        insert_stmt = MovieLensRating.__table__.insert()
+        if db.engine.dialect.name == "sqlite":
+            insert_stmt = insert_stmt.prefix_with("OR IGNORE")
+        elif db.engine.dialect.name == "mysql":
+            insert_stmt = insert_stmt.prefix_with("IGNORE")
 
         started = time.time()
         inserted = 0
@@ -154,15 +161,16 @@ def main():
                     continue
 
                 batch.append({
-                    "u": user_id,
-                    "m": movie_id,
+                    "ml_user_id": user_id,
+                    "movie_id": movie_id,
                     # 0.5-5.0 half stars -> 1-10 integer. Exact.
-                    "r": int(float(row[2]) * 2),
-                    "d": datetime.utcfromtimestamp(int(row[3])).date(),
+                    "rating": int(float(row[2]) * 2),
+                    "rated_at": datetime.fromtimestamp(
+                        int(row[3]), tz=timezone.utc).date(),
                 })
 
                 if len(batch) >= BATCH:
-                    db.session.execute(insert_sql, batch)
+                    db.session.execute(insert_stmt, batch)
                     db.session.commit()
                     inserted += len(batch)
                     batch.clear()
@@ -170,7 +178,7 @@ def main():
                     print(f"  {inserted:>10,} rows  {rate:>8,.0f}/s")
 
         if batch:
-            db.session.execute(insert_sql, batch)
+            db.session.execute(insert_stmt, batch)
             db.session.commit()
             inserted += len(batch)
 

@@ -44,6 +44,8 @@ import time
 from sqlalchemy import text
 
 from app import create_app, db
+
+from app.utils.helpers import safe_database_uri
 from app.models.models import ItemSimilarity
 from app.utils.cf_builder import (
     compute_neighbours, load_interaction_arrays, matrix_from_arrays,
@@ -68,7 +70,7 @@ def main():
     with app.app_context():
         print("=" * 70)
         print("Item-item collaborative filtering build (offline)")
-        print(f"Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        print(f"Database: {safe_database_uri(app.config['SQLALCHEMY_DATABASE_URI'])}")
         print(f"neighbours={args.neighbours} shrinkage={args.shrinkage} "
               f"min_ratings={args.min_ratings}")
         print("=" * 70)
@@ -94,17 +96,27 @@ def main():
 
         print("\nWriting Item_Similarity ...")
         started = time.time()
-        db.session.execute(text("DELETE FROM Item_Similarity"))
+        table = ItemSimilarity.__table__
+        db.session.execute(table.delete())
         db.session.commit()
 
-        insert_sql = text(
-            "INSERT INTO Item_Similarity (movie_id, neighbour_id, similarity, rank) "
-            "VALUES (:m, :n, :s, :r)"
-        )
+        # Built from the mapped table rather than a text() string so SQLAlchemy
+        # quotes the identifiers for whichever dialect is in use. "rank" is a
+        # reserved word in MySQL 8 (it is a window function), so an unquoted
+        # INSERT ... (movie_id, neighbour_id, similarity, rank) is a syntax
+        # error there while being legal in SQLite. executemany still applies,
+        # so this is no slower than the raw string was.
+        insert_stmt = table.insert()
         for offset in range(0, len(records), BATCH):
             chunk = records[offset:offset + BATCH]
-            db.session.execute(insert_sql, [
-                {"m": m, "n": n, "s": s, "r": r} for m, n, s, r in chunk
+            db.session.execute(insert_stmt, [
+                {
+                    "movie_id": m,
+                    "neighbour_id": n,
+                    "similarity": s,
+                    "rank": r,
+                }
+                for m, n, s, r in chunk
             ])
             db.session.commit()
 

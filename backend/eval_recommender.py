@@ -64,6 +64,8 @@ import sys
 import numpy as np
 
 from app import create_app, db
+
+from app.utils.helpers import safe_database_uri
 from app.models.models import Favorite, MovieLensRating, Rating
 from app.utils.cf_builder import (
     compute_neighbours, load_interaction_arrays, matrix_from_arrays,
@@ -209,7 +211,7 @@ def evaluate(k, sample_size, neighbours, shrinkage):
     with app.app_context():
         print("=" * 78)
         print(f"AtoZFlix recommender - offline evaluation (leave-one-out, K={k})")
-        print(f"Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        print(f"Database: {safe_database_uri(app.config['SQLALCHEMY_DATABASE_URI'])}")
         print("=" * 78)
 
         print("Loading interactions ...")

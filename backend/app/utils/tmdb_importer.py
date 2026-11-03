@@ -208,6 +208,26 @@ def populate_genres(session, movie):
         session.merge(MoviesGenres(movie_id=movie["id"], genre_id=genre["id"]))
 
 
+CHARACTER_NAME_MAX = 255  # Movies_Actors.character_name is VARCHAR(255)
+
+
+def _fit_character(name):
+    """
+    Clamp a credited character name to the column width.
+
+    TMDb lists every role a voice actor plays on one line, so a single credit
+    can run to many hundreds of characters (Trey Parker in South Park: Bigger,
+    Longer and Uncut). MySQL rejects the over-long value outright, and because
+    the importer commits in batches that rollback also discards every other
+    film waiting in the batch - one cartoon would silently cost up to 249.
+    """
+    if not name:
+        return None
+    if len(name) <= CHARACTER_NAME_MAX:
+        return name
+    return name[:CHARACTER_NAME_MAX - 3].rstrip() + "..."
+
+
 def populate_actors_and_crew(session, credits, movie_id):
     """
     Cast is truncated to the top CAST_LIMIT by TMDb's `order` (billing position),
@@ -229,7 +249,7 @@ def populate_actors_and_crew(session, credits, movie_id):
         session.merge(MoviesActors(
             movie_id=movie_id,
             actor_id=member["id"],
-            character_name=member.get("character") or None,
+            character_name=_fit_character(member.get("character")),
             billing_order=member.get("order"),
         ))
 
@@ -270,8 +290,20 @@ def populate_keywords(session, movie_id, keywords=None):
         keywords = fetch_keywords(movie_id).get("keywords", [])
 
     for keyword in keywords or []:
-        session.merge(Keyword(keyword_id=keyword["id"], keyword_name=keyword["name"]))
-        session.merge(MoviesKeywords(movie_id=movie_id, keyword_id=keyword["id"]))
+        keyword_id = keyword["id"]
+
+        # Keywords.keyword_name is UNIQUE, but TMDb does not guarantee that:
+        # distinct keyword ids can share one name ("tape recording"). Merging
+        # the second id raises a duplicate-entry error, and the importer then
+        # rolls back every film waiting in the current commit batch. Reuse the
+        # id already stored for that name instead - same label, same meaning.
+        existing = session.query(Keyword).filter_by(keyword_name=keyword["name"]).first()
+        if existing is not None:
+            keyword_id = existing.keyword_id
+        else:
+            session.merge(Keyword(keyword_id=keyword_id, keyword_name=keyword["name"]))
+
+        session.merge(MoviesKeywords(movie_id=movie_id, keyword_id=keyword_id))
 
 
 def persist_bundle(session, bundle):

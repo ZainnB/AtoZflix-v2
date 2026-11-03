@@ -28,7 +28,21 @@ def create_app():
     app = Flask(__name__)
     
     # Load configuration from environment variables
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    # Signs Flask session cookies. Same reasoning as JWT_SECRET_KEY in
+    # app/utils/jwt_auth.py: a silent fallback to a value that lives in the
+    # source is not a default, it is a vulnerability, so only development is
+    # allowed to boot without it.
+    secret_key = os.getenv('SECRET_KEY')
+    if not secret_key:
+        if os.getenv('FLASK_ENV') == 'development':
+            secret_key = 'dev-secret-key-change-in-production'
+        else:
+            raise RuntimeError(
+                'SECRET_KEY is not set. Generate one with '
+                '`python -c "import secrets; print(secrets.token_urlsafe(48))"` '
+                'and set it in the environment.'
+            )
+    app.config['SECRET_KEY'] = secret_key
 
     # Normalize DATABASE_URL (Railway might provide mysql://)
     database_url = os.getenv('DATABASE_URL', 'sqlite:///movies.db')

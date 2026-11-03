@@ -526,7 +526,13 @@ def collect_user_interactions(user_id):
     """
     Read ONE user's interactions live. Never cached.
 
-
+    The model cache is shared and rebuilds on a TTL, so a favourite added a
+    second ago would not appear in it yet. This user's own preferences are
+    therefore read straight from the tables on every request - it is three
+    indexed lookups on one user, not a catalog-wide scan, so it is cheap
+    enough to do per call and it keeps the feed consistent with what the user
+    just did. Only the expensive catalog-wide models stay cached.
+    """
     prefs = defaultdict(float)
 
     for movie_id, rating, rated_at in db.session.query(

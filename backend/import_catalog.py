@@ -52,6 +52,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
 from app import create_app, db
+
+from app.utils.helpers import safe_database_uri
 from app.models.models import Movie
 from app.utils.tmdb_importer import (
     build_session, fetch_movie_bundle, fetch_with_retry, persist_bundle,
@@ -218,7 +220,7 @@ def main():
 
     app = create_app()
     with app.app_context():
-        print(f"\nDatabase: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        print(f"\nDatabase: {safe_database_uri(app.config['SQLALCHEMY_DATABASE_URI'])}")
         db.create_all()
 
         if args.recent:

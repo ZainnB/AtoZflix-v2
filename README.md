@@ -20,7 +20,7 @@ AtoZflix is an intelligent movie recommendation platform built with Flask (backe
 
 ## Tech Stack
 
-- **Backend:** Flask, SQLAlchemy, PostgreSQL/SQLite, JWT, Flask-Limiter
+- **Backend:** Flask, SQLAlchemy, MySQL 8 (PyMySQL), JWT, Flask-Limiter
 - **Frontend:** SvelteKit, Svelte 5
 - **API:** TMDb (The Movie Database)
 - **Deployment:** Netlify (Frontend), Railway/Render/Heroku (Backend)
@@ -70,17 +70,29 @@ primary key, the most-rated row wins and the rest are dropped.
 
 ```bash
 cd backend
+
+# numpy/scipy are build-only deps - the API never imports them, but
+# build_similarity.py and eval_recommender.py do.
+pip install -r requirements-build.txt
+
 python setup_db.py                                    # create tables
+python migrate_schema.py                              # add any columns the models gained
 python import_catalog.py --limit 5000 --workers 12    # ~3.5 min  (MovieLens-ranked)
 python import_movielens.py --max-users 40000          # ~13 min
 python build_similarity.py                            # ~2.5 min
 python import_catalog.py --recent --limit 1500        # ~1 min    (post-2019 gap)
+python backfill_people.py                             # ~4 min    (cast/crew headshots)
 python eval_recommender.py                            # measure it
 ```
 
-Requires `TMDB_ACCESS_TOKEN` (v4 read token) in `backend/.env` and the
-[ml-25m](https://files.grouplens.org/datasets/movielens/ml-25m.zip) extract at
-`MOVIELENS_DIR`. The dataset is ~1.1GB and is **not** committed.
+Requires a TMDb credential in `backend/.env` - either `TMDB_ACCESS_TOKEN`
+(v4 read token, preferred when both are set) or `TMDB_API_KEY` (v3 key) -
+and the [ml-25m](https://files.grouplens.org/datasets/movielens/ml-25m.zip)
+extract at `MOVIELENS_DIR`. The dataset is ~1.1GB and is **not** committed.
+
+`setup_db.py` only ever CREATEs tables, so `migrate_schema.py` is what picks
+up columns added to a model after a database already exists. Run both; they
+are idempotent.
 
 `import_catalog.py` uses TMDb's `append_to_response=credits,keywords` to get
 details, cast, crew and keywords in **one** request instead of three — 5,000
@@ -305,26 +317,36 @@ and `Inception` returns Nolan's filmography.
 Create a `.env` file in the `backend/` directory (use `.env.example` as template):
 
 ```env
-# Flask Configuration
-SECRET_KEY=your-secret-key-here-change-in-production
+# Flask. Generate each secret with:
+#   python -c "import secrets; print(secrets.token_urlsafe(48))"
+SECRET_KEY=<48+ random bytes>
 FLASK_ENV=development
 
-# JWT Configuration
-JWT_SECRET_KEY=your-jwt-secret-key-here-change-in-production
+# JWT. MUST be set and MUST differ from SECRET_KEY. Outside
+# FLASK_ENV=development the app refuses to start without it, rather than
+# silently signing tokens with a default that lives in the source.
+JWT_SECRET_KEY=<48+ random bytes, different from SECRET_KEY>
 
-# Database Configuration
-# For SQLite (development):
-DATABASE_URL=sqlite:///movies.db
-# For PostgreSQL (production):
-# DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+# Database. This project runs on MySQL 8: requirements.txt ships PyMySQL
+# and no PostgreSQL driver, and app/__init__.py only normalises mysql://.
+DATABASE_URL=mysql+pymysql://atozflix_user:password@127.0.0.1:3306/atozflix_db
+# SQLite works for a quick throwaway, but the data pipeline assumes MySQL:
+# DATABASE_URL=sqlite:///movies.db
 
-# CORS Configuration
-# Comma-separated list of allowed origins
-CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173
+# CORS. Comma-separated allowed browser origins, no trailing slashes. The
+# deployed frontend origin must be listed or every request fails preflight,
+# which the browser then reports as a generic network error.
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000
 
-# TMDb API Configuration
-TMDB_API_KEY=your-tmdb-api-key-here
+# TMDb. Either scheme works; the v4 bearer token wins when both are set.
+TMDB_API_KEY=your-tmdb-v3-api-key
+# TMDB_ACCESS_TOKEN=your-tmdb-v4-read-token
+
+# Data pipeline only. Relative to backend/, so ../ml-25m is the repo root.
+MOVIELENS_DIR=../ml-25m
 ```
+
+The full annotated list lives in [`backend/.env.example`](backend/.env.example).
 
 ### Frontend Environment Variables
 
@@ -413,52 +435,100 @@ The frontend will run on `http://localhost:5173` (or your configured port)
 
 ### Backend Deployment
 
-**Note:** Netlify only hosts static sites. You need to deploy the Flask backend separately.
+**Netlify hosts the frontend only.** The Flask API is deployed separately.
 
-#### Option 1: Railway (Recommended)
-1. Push your code to GitHub
-2. Create a new project on Railway
-3. Connect your GitHub repository
-4. Add a PostgreSQL database service
-5. Set all environment variables in Railway dashboard
-6. Deploy
+**The database is MySQL 8, not PostgreSQL.** `requirements.txt` ships PyMySQL
+and no `psycopg2`, and `app/__init__.py` only normalises a `mysql://` prefix, so
+provisioning a Postgres add-on and pointing `DATABASE_URL` at it fails at boot
+with `ModuleNotFoundError: No module named 'psycopg2'`. Use a MySQL service
+(Railway MySQL, Aiven, PlanetScale, Amazon RDS). Switching to Postgres is a
+real change: add `psycopg2-binary` to `requirements.txt` and teach
+`app/__init__.py` the `postgresql://` prefix first.
+
+#### Common settings for every platform
+
+| Setting | Value |
+|---|---|
+| Root / base directory | `backend` (the `Procfile` and `runtime.txt` live there) |
+| Build command | `pip install -r requirements.txt` |
+| Start command | from `Procfile`, or `gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120` |
+| Python version | pinned to 3.11.9 by `runtime.txt` / `.python-version` |
+
+Environment variables that must be set, or the app will not start:
+`SECRET_KEY`, `JWT_SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `FLASK_ENV=production`.
+Add `TMDB_API_KEY` (or `TMDB_ACCESS_TOKEN`) so actor pages can lazily fetch
+biographies. See [`backend/.env.example`](backend/.env.example).
+
+**Worker sizing.** Each gunicorn worker builds and holds its own copy of the
+recommender: `load_precomputed_neighbours()` pulls the whole `Item_Similarity`
+table (~300k rows at a 5,000-film catalog) into a dict, and the content model
+adds its own index. Budget roughly 100MB per worker on top of the base image.
+The `Procfile` therefore defaults to **one** worker with eight threads, which
+keeps a single shared copy of the model rather than multiplying it. Scale with
+threads first; add workers only once the instance has the memory for them.
+
+**Rate limiting.** Flask-Limiter is configured with in-memory storage, so
+limits are per-worker and reset on restart. That is adequate for one worker.
+For more than one, give it shared storage (`RATELIMIT_STORAGE_URI` pointing at
+Redis) or the auth throttles can be bypassed by landing on a different worker.
+
+#### Option 1: Railway (recommended)
+1. Push to GitHub, create a Railway project from the repo.
+2. Set the service **root directory** to `backend`.
+3. Add a **MySQL** database service (not PostgreSQL).
+4. Railway injects its own connection variables; set `DATABASE_URL` explicitly
+   to `mysql+pymysql://user:password@host:port/dbname`.
+5. Set the remaining environment variables listed above.
+6. Deploy, then run the schema setup once against the hosted database:
+   `python setup_db.py && python migrate_schema.py`.
 
 #### Option 2: Render
-1. Push your code to GitHub
-2. Create a new Web Service on Render
-3. Connect your GitHub repository
-4. Add PostgreSQL database
-5. Set build command: `pip install -r requirements.txt`
-6. Set start command: `gunicorn run:app`
-7. Add all environment variables
-8. Deploy
+1. New Web Service from the repo, **root directory** `backend`.
+2. Build command `pip install -r requirements.txt`.
+3. Start command `gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120`.
+4. Render has no managed MySQL - use an external one (Aiven, PlanetScale) and
+   point `DATABASE_URL` at it.
+5. Add the environment variables, deploy, then run the schema setup once.
 
 #### Option 3: Heroku
-1. Install Heroku CLI
-2. Create Heroku app: `heroku create your-app-name`
-3. Add PostgreSQL: `heroku addons:create heroku-postgresql:hobby-dev`
-4. Set environment variables: `heroku config:set KEY=value`
-5. Deploy: `git push heroku main`
+1. `heroku create your-app-name`
+2. Add a MySQL add-on (e.g. JawsDB or ClearDB) rather than
+   `heroku-postgresql`, and set `DATABASE_URL` to its
+   `mysql+pymysql://...` form.
+3. `heroku config:set SECRET_KEY=... JWT_SECRET_KEY=... CORS_ORIGINS=... FLASK_ENV=production`
+4. Deploy. `Procfile` and `runtime.txt` are both under `backend/`, so either
+   deploy that subdirectory or move them to the repository root.
 
 ### Frontend Deployment (Netlify)
 
-1. Push your code to GitHub
-2. Create a new site on Netlify
-3. Connect your GitHub repository
-4. Set build settings:
+1. Push to GitHub and create a Netlify site from the repo.
+2. Build settings:
    - Base directory: `frontend_svelte`
    - Build command: `npm run build`
-   - Publish directory: `.svelte-kit`
-5. Set environment variable `VITE_API_BASE_URL` to your production backend URL
-6. Deploy
+   - Publish directory: **`build`**
+3. Set `VITE_API_BASE_URL` to the deployed backend URL. Vite inlines this at
+   **build** time, so changing it requires a redeploy, not just a restart.
+4. Deploy.
 
-**Important:** Make sure to update `CORS_ORIGINS` in your backend to include your Netlify domain.
+Publish `build`, never `.svelte-kit`. `.svelte-kit` is Vite's intermediate
+working directory; `adapter-netlify` writes the deployable site to `build`
+along with the `_redirects` rules and the serverless render function.
+[`netlify.toml`](frontend_svelte/netlify.toml) already sets this correctly, so
+the dashboard fields only matter if you override it there.
+
+**Important:** add the Netlify origin to `CORS_ORIGINS` on the backend, with no
+trailing slash, or every request from the deployed site fails preflight.
 
 ---
 
 ## Database Migration
 
-For production, migrate from SQLite to PostgreSQL. See `backend/migration_guide.md` for detailed instructions.
+The project targets MySQL 8. See [`backend/migration_guide.md`](backend/migration_guide.md)
+for creating the schema, user and privileges.
+
+`setup_db.py` creates tables; it never alters an existing one. `migrate_schema.py`
+reconciles columns a model has gained since the database was created, and is
+idempotent - run `--dry-run` first to see the plan.
 
 ---
 

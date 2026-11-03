@@ -11,9 +11,6 @@ export default defineConfig({
 			usePolling: false
 		}
 	},
-	optimizeDeps: {
-		include: ['svelte-routing']
-	},
 	build: {
 		chunkSizeWarningLimit: 1000,
 		rollupOptions: {

@@ -5,8 +5,27 @@ from functools import wraps
 from flask import request, jsonify
 from app.models.models import User
 
-# Get JWT secret from environment, fallback to default for development
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+# The signing key for every access and refresh token.
+#
+# This used to fall back to a hardcoded string whenever the variable was
+# unset, which is the worst possible failure mode: the app starts, works,
+# and silently signs tokens with a value that is committed in the source.
+# Anyone who can read the repository could then mint a token claiming
+# role='admin'. Forgetting an environment variable on a deploy host must
+# break the boot, not the security model - so outside development it raises.
+_DEV_FALLBACK = 'dev-secret-key-change-in-production'
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+
+if not JWT_SECRET_KEY:
+    if os.getenv('FLASK_ENV') == 'development':
+        JWT_SECRET_KEY = _DEV_FALLBACK
+    else:
+        raise RuntimeError(
+            'JWT_SECRET_KEY is not set. Generate one with '
+            '`python -c "import secrets; print(secrets.token_urlsafe(48))"` '
+            'and set it in the environment. It is only allowed to fall back '
+            "to a development default when FLASK_ENV='development'."
+        )
 JWT_ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
